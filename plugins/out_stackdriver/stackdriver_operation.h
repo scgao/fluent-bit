@@ -23,7 +23,7 @@
 #include "stackdriver.h"
 
 typedef enum {
-    NO_OPERATION = 0,
+    NO_OPERATION = 1,
     EXTRA_OR_INVALID_TYPE = 2,
     EMPTY_ID_OR_PRODUCER = 3,
     OPERATION_EXISTED = 4
