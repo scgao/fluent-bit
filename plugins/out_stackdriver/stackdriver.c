@@ -444,23 +444,23 @@ static int get_severity_level(severity_t * s, const msgpack_object * o,
     return -1;
 }
 
-static int calculate_spec_fields(bool operation_existed)
+static int calculate_spec_fields(bool operation_extracted)
 {
     /* Specified fields include operation, sourceLocation ... */
     int ret = 0;
 
-    if (operation_existed == true) {
+    if (operation_extracted == true) {
         ret += 1;
     }
 }
 
-static void update_json_payload(bool operation_existed, msgpack_packer* mp_pck, 
+static void update_json_payload(bool operation_extracted, msgpack_packer* mp_pck, 
                                 msgpack_object *obj)
 {
     /* Specified fields include operation, sourceLocation ... */
     /* TODO: deal with other fields later */
 
-    if (operation_existed == true) {
+    if (operation_extracted == true) {
         pack_object_except_operation(mp_pck, obj);
     }
     else {
@@ -525,7 +525,7 @@ static int stackdriver_format(const void *data, size_t bytes,
     flb_sds_t operation_producer;
     bool operation_first = false;
     bool operation_last = false;
-    bool operation_existed = false;
+    bool operation_extracted = false;
 
 
     /* Count number of records */
@@ -615,10 +615,10 @@ static int stackdriver_format(const void *data, size_t bytes,
         /*  Parse jsonPayload and extract operation first*/
         operation_id = flb_sds_create("");
         operation_producer = flb_sds_create("");
-        operation_existed = extract_operation(&operation_id, &operation_producer,
+        operation_extracted = extract_operation(&operation_id, &operation_producer,
                               &operation_first, &operation_last, obj);
 
-        entry_size += calculate_spec_fields(operation_existed);
+        entry_size += calculate_spec_fields(operation_extracted);
 
         if (ctx->severity_key
             && get_severity_level(&severity, obj, ctx->severity_key) == 0) {
@@ -634,7 +634,7 @@ static int stackdriver_format(const void *data, size_t bytes,
         }
 
         /* Add operation field into the log entry */
-        if (operation_existed == true) {
+        if (operation_extracted == true) {
             add_operation_field(&operation_id, &operation_producer,
                                 &operation_first, &operation_last, &mp_pck);
         }
@@ -645,7 +645,7 @@ static int stackdriver_format(const void *data, size_t bytes,
         /* jsonPayload */
         msgpack_pack_str(&mp_pck, 11);
         msgpack_pack_str_body(&mp_pck, "jsonPayload", 11);
-        update_json_payload(operation_existed, &mp_pck, obj);
+        update_json_payload(operation_extracted, &mp_pck, obj);
 
         /* logName */
         len = snprintf(path, sizeof(path) - 1,
