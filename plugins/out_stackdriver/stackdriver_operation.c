@@ -143,8 +143,10 @@ int pack_object_except_operation(msgpack_packer *mp_pck, msgpack_object *obj){
         for(; kv != kvend; ++kv) {
             flb_sds_t cur_key = flb_sds_create_len(kv->key.via.str.ptr, kv->key.via.str.size);
             if (strcmp(cur_key, OPERATION_FIELD_IN_JSON) == 0 && kv->val.type == MSGPACK_OBJECT_MAP) {
+                flb_sds_destroy(cur_key);
                 continue;
             }
+            
             flb_sds_destroy(cur_key);
             ret = msgpack_pack_object(mp_pck, kv->key);
             if(ret < 0) { return ret; }
