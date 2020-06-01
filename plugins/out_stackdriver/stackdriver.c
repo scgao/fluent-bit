@@ -444,16 +444,6 @@ static int get_severity_level(severity_t * s, const msgpack_object * o,
     return -1;
 }
 
-static int calculate_spec_fields(bool operation_extracted)
-{
-    /* Specified fields include operation, sourceLocation ... */
-    int ret = 0;
-
-    if (operation_extracted == true) {
-        ret += 1;
-    }
-}
-
 static void pack_json_payload(bool operation_extracted, msgpack_packer* mp_pck, 
                                 msgpack_object *obj)
 {
@@ -617,8 +607,10 @@ static int stackdriver_format(const void *data, size_t bytes,
         operation_producer = flb_sds_create("");
         operation_extracted = extract_operation(&operation_id, &operation_producer,
                               &operation_first, &operation_last, obj);
-
-        entry_size += calculate_spec_fields(operation_extracted);
+        
+        if (operation_extracted == true) {
+            entry_size += 1;
+        }
 
         if (ctx->severity_key
             && get_severity_level(&severity, obj, ctx->severity_key) == 0) {
