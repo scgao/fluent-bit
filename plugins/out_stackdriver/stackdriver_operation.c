@@ -68,6 +68,8 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
                 flb_sds_t cur_key = flb_sds_create_len(p->key.via.str.ptr, p->key.via.str.size);
                 
                 if (strcmp(cur_key, "logging.googleapis.com/operation") == 0 && p->val.type == MSGPACK_OBJECT_MAP) {
+                    flb_sds_destroy(*operation_id);
+                    flb_sds_destroy(*operation_producer);
                     *operation_id = flb_sds_create("");
                     *operation_producer = flb_sds_create("");
                     *operation_first = false;
@@ -141,7 +143,7 @@ int pack_object_except_operation(msgpack_packer *mp_pck, msgpack_object *obj){
             if (strcmp(cur_key, "logging.googleapis.com/operation") == 0 && kv->val.type == MSGPACK_OBJECT_MAP) {
                 continue;
             }
-
+            flb_sds_destroy(cur_key);
             ret = msgpack_pack_object(mp_pck, kv->key);
             if(ret < 0) { return ret; }
             ret = msgpack_pack_object(mp_pck, kv->val);
