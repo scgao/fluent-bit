@@ -454,7 +454,7 @@ static int calculate_spec_fields(bool operation_extracted)
     }
 }
 
-static void update_json_payload(bool operation_extracted, msgpack_packer* mp_pck, 
+static void pack_json_payload(bool operation_extracted, msgpack_packer* mp_pck, 
                                 msgpack_object *obj)
 {
     /* Specified fields include operation, sourceLocation ... */
@@ -645,7 +645,7 @@ static int stackdriver_format(const void *data, size_t bytes,
         /* jsonPayload */
         msgpack_pack_str(&mp_pck, 11);
         msgpack_pack_str_body(&mp_pck, "jsonPayload", 11);
-        update_json_payload(operation_extracted, &mp_pck, obj);
+        pack_json_payload(operation_extracted, &mp_pck, obj);
 
         /* logName */
         len = snprintf(path, sizeof(path) - 1,
