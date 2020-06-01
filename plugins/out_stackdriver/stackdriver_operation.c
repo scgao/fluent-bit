@@ -57,7 +57,7 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
                               bool *operation_first, bool *operation_last, 
                               msgpack_object *obj)
 {
-    bool ret = false;
+    operation_status op_status = NO_OPERATION;
 
     if (obj->via.map.size != 0) {
         msgpack_object_kv* p = obj->via.map.ptr;
@@ -70,11 +70,13 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
                 if (strcmp(field_name, OPERATION_FIELD_IN_JSON) == 0 && p->val.type == MSGPACK_OBJECT_MAP) {
                     flb_sds_destroy(*operation_id);
                     flb_sds_destroy(*operation_producer);
+
                     *operation_id = flb_sds_create("");
                     *operation_producer = flb_sds_create("");
                     *operation_first = false;
                     *operation_last = false;
-                    ret = true;
+
+                    op_status = OPERATION_EXISTED;
 
                     msgpack_object sub_field = p->val;
                     if (sub_field.via.map.size != 0) {
@@ -82,7 +84,11 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
                         msgpack_object_kv* const tmp_pend = sub_field.via.map.ptr + sub_field.via.map.size;
 
                         for (; tmp_p < tmp_pend; ++tmp_p) {
-                            if (tmp_p->key.type == MSGPACK_OBJECT_STR) {   
+                            if (tmp_p->key.type != MSGPACK_OBJECT_STR) {
+                                op_status = EXTRA_OR_INVALID_TYPE;
+                                break;
+                            }
+                            else {   
                                 flb_sds_t sub_field_name = flb_sds_create_len(tmp_p->key.via.str.ptr, tmp_p->key.via.str.size);
 
                                 if (strcmp(sub_field_name, "id") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
@@ -101,21 +107,22 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
                                 }
                                 else {
                                     /* extra sub-fiels or incorrect type of sub-fields */
-                                    ret = false;
-                                    printf("extra sub-fiels or incorrect type of sub-fields\n");
-                                    fflush(stdout);
+                                    op_status = EXTRA_OR_INVALID_TYPE;
+                                    flb_sds_destroy(sub_field_name);
                                     break;
                                 }
                                 flb_sds_destroy(sub_field_name);
                             }
                         }
                     }
+                    flb_sds_destroy(field_name);
+                    break;
                 }
-                flb_sds_destroy(field_name);                 
+                flb_sds_destroy(field_name);       
             }
         }
     }
-    
+    /*
     if (ret == true) {
         if (flb_sds_is_empty(*operation_producer) == FLB_TRUE || flb_sds_is_empty(*operation_id) == FLB_TRUE) {
             printf("empty id or producer!\n");
@@ -126,9 +133,35 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
             printf("valid operation!\n");
             fflush(stdout);
         }
+    }*/
+
+    if (op_status == OPERATION_EXISTED 
+        && (flb_sds_is_empty(*operation_producer) == FLB_TRUE || flb_sds_is_empty(*operation_id) == FLB_TRUE))
+    {
+        op_status = EMPTY_ID_OR_PRODUCER;
     }
 
-    return ret;
+    switch (op_status)
+    {
+        case OPERATION_EXISTED:
+            printf("valid operation!\n");
+            break;
+        case NO_OPERATION:
+            printf("no operation!\n");
+            break;
+        case EMPTY_ID_OR_PRODUCER:
+            printf("empty id or producer!\n");
+            break;
+        case EXTRA_OR_INVALID_TYPE:
+            printf("extra sub-fields or invalid type!\n");
+    }
+    fflush(stdout);
+
+
+    if (op_status == OPERATION_EXISTED) {
+         return true;
+    }
+    return false;
 }
 
 int pack_object_except_operation(msgpack_packer *mp_pck, msgpack_object *obj){
