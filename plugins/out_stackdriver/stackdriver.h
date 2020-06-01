@@ -46,6 +46,8 @@
 /* Default Resource type */
 #define FLB_SDS_RESOURCE_TYPE "global"
 
+#define OPERATION_FIELD_IN_JSON "logging.googleapis.com/operation"
+
 /* File path for printing jsonPayload/msg_packer */
 #define JSONPAYLOAD_WRITE_PATH "/tmp/jsonPayload_object.txt"
 #define PACKER_WRITE_PATH "/tmp/packer.txt"

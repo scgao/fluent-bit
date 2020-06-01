@@ -65,9 +65,9 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
 
         for (; p < pend; ++p) {
             if (p->key.type == MSGPACK_OBJECT_STR) {
-                flb_sds_t cur_key = flb_sds_create_len(p->key.via.str.ptr, p->key.via.str.size);
+                flb_sds_t field_name = flb_sds_create_len(p->key.via.str.ptr, p->key.via.str.size);
                 
-                if (strcmp(cur_key, "logging.googleapis.com/operation") == 0 && p->val.type == MSGPACK_OBJECT_MAP) {
+                if (strcmp(field_name, OPERATION_FIELD_IN_JSON) == 0 && p->val.type == MSGPACK_OBJECT_MAP) {
                     flb_sds_destroy(*operation_id);
                     flb_sds_destroy(*operation_producer);
                     *operation_id = flb_sds_create("");
@@ -83,19 +83,20 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
 
                         for (; tmp_p < tmp_pend; ++tmp_p) {
                             if (tmp_p->key.type == MSGPACK_OBJECT_STR) {   
-                                flb_sds_destroy(cur_key);                                 
-                                cur_key = flb_sds_create_len(tmp_p->key.via.str.ptr, tmp_p->key.via.str.size);
+                                flb_sds_t sub_field_name = flb_sds_create_len(tmp_p->key.via.str.ptr, tmp_p->key.via.str.size);
 
-                                if (strcmp(cur_key, "id") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
+                                if (strcmp(sub_field_name, "id") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
+                                    flb_sds_destroy(*operation_id);
                                     *operation_id = flb_sds_create_len(tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                                 }
-                                else if (strcmp(cur_key, "producer") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
+                                else if (strcmp(sub_field_name, "producer") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
+                                    flb_sds_destroy(*operation_producer);
                                     *operation_producer = flb_sds_create_len(tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                                 }
-                                else if (strcmp(cur_key, "first") == 0 && tmp_p->val.type == MSGPACK_OBJECT_BOOLEAN) {
+                                else if (strcmp(sub_field_name, "first") == 0 && tmp_p->val.type == MSGPACK_OBJECT_BOOLEAN) {
                                     *operation_first = tmp_p->val.via.boolean;
                                 }
-                                else if (strcmp(cur_key, "last") == 0 && tmp_p->val.type == MSGPACK_OBJECT_BOOLEAN) {
+                                else if (strcmp(sub_field_name, "last") == 0 && tmp_p->val.type == MSGPACK_OBJECT_BOOLEAN) {
                                     *operation_last = tmp_p->val.via.boolean;
                                 }
                                 else {
@@ -105,11 +106,12 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
                                     fflush(stdout);
                                     break;
                                 }
+                                flb_sds_destroy(sub_field_name);
                             }
                         }
                     }
                 }
-                flb_sds_destroy(cur_key);                 
+                flb_sds_destroy(field_name);                 
             }
         }
     }
@@ -140,7 +142,7 @@ int pack_object_except_operation(msgpack_packer *mp_pck, msgpack_object *obj){
         msgpack_object_kv* const kvend = obj->via.map.ptr + obj->via.map.size;
         for(; kv != kvend; ++kv) {
             flb_sds_t cur_key = flb_sds_create_len(kv->key.via.str.ptr, kv->key.via.str.size);
-            if (strcmp(cur_key, "logging.googleapis.com/operation") == 0 && kv->val.type == MSGPACK_OBJECT_MAP) {
+            if (strcmp(cur_key, OPERATION_FIELD_IN_JSON) == 0 && kv->val.type == MSGPACK_OBJECT_MAP) {
                 continue;
             }
             flb_sds_destroy(cur_key);
