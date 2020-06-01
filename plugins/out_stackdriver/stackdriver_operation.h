@@ -22,6 +22,13 @@
 
 #include "stackdriver.h"
 
+typedef enum {
+    NO_OPERATION = 0,
+    EXTRA_OR_INVALID_TYPE = 2,
+    EMPTY_ID_OR_PRODUCER = 3,
+    OPERATION_EXISTED = 4
+} operation_status;
+
 void add_operation_field(flb_sds_t *operation_id, flb_sds_t *operation_producer, 
                                 bool *operation_first, bool *operation_last, 
                                 msgpack_packer *mp_pck);
