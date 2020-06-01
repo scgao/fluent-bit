@@ -30,6 +30,7 @@
 #include "gce_metadata.h"
 #include "stackdriver.h"
 #include "stackdriver_conf.h"
+#include "stackdriver_operation.h"
 #include <mbedtls/base64.h>
 #include <mbedtls/sha256.h>
 
@@ -443,6 +444,60 @@ static int get_severity_level(severity_t * s, const msgpack_object * o,
     return -1;
 }
 
+static int calculate_spec_fields(bool operation_existed)
+{
+    /* Specified fields include operation, sourceLocation ... */
+    int ret = 0;
+
+    if (operation_existed == true) {
+        ret += 1;
+    }
+}
+
+static void update_json_payload(bool operation_existed, msgpack_packer* mp_pck, 
+                                msgpack_object *obj)
+{
+    /* Specified fields include operation, sourceLocation ... */
+    /* TODO: deal with other fields later */
+
+    if (operation_existed == true) {
+        pack_object_except_operation(mp_pck, obj);
+    }
+    else {
+        msgpack_pack_object(mp_pck, *obj);
+    }
+}
+
+static void print_json_payload(const char* file_to_write, msgpack_object* obj) 
+{
+    /*FILE *fp_jsonPayload;
+    fp_jsonPayload = fopen(file_to_write, "w+");*/
+    printf("The input jsonPayload is: \n");
+    msgpack_object_print(stdout, *obj);
+    printf("\n");
+    fflush(stdout);
+    /*fclose(fp_jsonPayload);*/
+}
+
+static void print_packer(const char* file_to_write, msgpack_sbuffer* mp_sbuf) 
+{
+    /*FILE *fp_packer;
+    fp_packer = fopen(file_to_write, "w+");*/
+    msgpack_zone mempool;
+    msgpack_zone_init(&mempool, 2048);
+
+    msgpack_object deserialized;
+    msgpack_unpack(mp_sbuf->data, mp_sbuf->size, NULL, &mempool, &deserialized);
+	
+    printf("The msg_packer is: \n");
+    msgpack_object_print(stdout, deserialized);
+    printf("\n");
+    fflush(stdout);
+    msgpack_zone_destroy(&mempool);
+
+    /*fclose(fp_packer);*/
+}
+
 static int stackdriver_format(const void *data, size_t bytes,
                               const char *tag, size_t tag_len,
                               char **out_data, size_t *out_size,
@@ -450,6 +505,8 @@ static int stackdriver_format(const void *data, size_t bytes,
 {
     int len;
     int array_size = 0;
+    /* The defaulf value is 3: timestamp, jsonPayload, logName. When the operation exists, entry_size will increase by 1*/
+    int entry_size = 3; 
     size_t s;
     size_t off = 0;
     char path[PATH_MAX];
@@ -462,6 +519,14 @@ static int stackdriver_format(const void *data, size_t bytes,
     msgpack_sbuffer mp_sbuf;
     msgpack_packer mp_pck;
     flb_sds_t out_buf;
+
+    /* Parameters in Operation*/
+    flb_sds_t operation_id;
+    flb_sds_t operation_producer;
+    bool operation_first = false;
+    bool operation_last = false;
+    bool operation_existed = false;
+
 
     /* Count number of records */
     array_size = flb_mp_count(data, bytes);
@@ -546,22 +611,41 @@ static int stackdriver_format(const void *data, size_t bytes,
          *  "timestamp": "..."
          * }
          */
+        
+        /*  Parse jsonPayload and extract operation first*/
+        operation_id = flb_sds_create("");
+        operation_producer = flb_sds_create("");
+        operation_existed = extract_operation(&operation_id, &operation_producer,
+                              &operation_first, &operation_last, obj);
+
+        entry_size += calculate_spec_fields(operation_existed);
+
         if (ctx->severity_key
             && get_severity_level(&severity, obj, ctx->severity_key) == 0) {
             /* additional field for severity */
-            msgpack_pack_map(&mp_pck, 4);
+            entry_size += 1;
+            msgpack_pack_map(&mp_pck, entry_size);
             msgpack_pack_str(&mp_pck, 8);
             msgpack_pack_str_body(&mp_pck, "severity", 8);
             msgpack_pack_int(&mp_pck, severity);
         }
         else {
-            msgpack_pack_map(&mp_pck, 3);
+            msgpack_pack_map(&mp_pck, entry_size);
         }
+
+        /* Add operation field into the log entry */
+        if (operation_existed == true) {
+            add_operation_field(&operation_id, &operation_producer,
+                                &operation_first, &operation_last, &mp_pck);
+        }
+        
+        /* print out the jsonPayload*/
+        print_json_payload(JSONPAYLOAD_WRITE_PATH, obj);
 
         /* jsonPayload */
         msgpack_pack_str(&mp_pck, 11);
         msgpack_pack_str_body(&mp_pck, "jsonPayload", 11);
-        msgpack_pack_object(&mp_pck, *obj);
+        update_json_payload(operation_existed, &mp_pck, obj);
 
         /* logName */
         len = snprintf(path, sizeof(path) - 1,
@@ -588,6 +672,9 @@ static int stackdriver_format(const void *data, size_t bytes,
         msgpack_pack_str_body(&mp_pck, time_formatted, s);
     }
 
+    /* print out the packer*/
+    print_packer(PACKER_WRITE_PATH, &mp_sbuf);
+
     /* Convert from msgpack to JSON */
     out_buf = flb_msgpack_raw_to_json_sds(mp_sbuf.data, mp_sbuf.size);
     msgpack_sbuffer_destroy(&mp_sbuf);
@@ -600,6 +687,10 @@ static int stackdriver_format(const void *data, size_t bytes,
 
     *out_data = out_buf;
     *out_size = flb_sds_len(out_buf);
+
+    /* Clean up id and producer*/
+    flb_sds_destroy(operation_id);
+    flb_sds_destroy(operation_producer);
 
     return 0;
 }
@@ -642,6 +733,7 @@ static void cb_stackdriver_flush(const void *data, size_t bytes,
     /* Reformat msgpack to stackdriver JSON payload */
     ret = stackdriver_format(data, bytes, tag, tag_len,
                              &payload_buf, &payload_size, ctx);
+    
     if (ret != 0) {
         flb_upstream_conn_release(u_conn);
         FLB_OUTPUT_RETURN(FLB_RETRY);
