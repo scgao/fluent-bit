@@ -447,7 +447,7 @@ static int get_severity_level(severity_t * s, const msgpack_object * o,
     return -1;
 }
 
-static int pack_json_payload(bool operation_extracted, int operation_extra_size, 
+static int pack_json_payload(int operation_extracted, int operation_extra_size, 
                              msgpack_packer* mp_pck, msgpack_object *obj)
 {
     /* Specified fields include operation, sourceLocation ... */
@@ -456,12 +456,12 @@ static int pack_json_payload(bool operation_extracted, int operation_extra_size,
     msgpack_object_kv *kv = obj->via.map.ptr;
     msgpack_object_kv *const kvend = obj->via.map.ptr + obj->via.map.size;
 
-    if(operation_extracted && operation_extra_size == 0) {
+    if (operation_extracted == FLB_TRUE && operation_extra_size == 0) {
         to_remove += 1;
     }
 
     ret = msgpack_pack_map(mp_pck, obj->via.map.size - to_remove);
-    if(ret < 0) {
+    if (ret < 0) {
         return ret;
     }
     
@@ -469,7 +469,7 @@ static int pack_json_payload(bool operation_extracted, int operation_extra_size,
         if (strncmp(OPERATION_FIELD_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
             && kv->val.type == MSGPACK_OBJECT_MAP) {
 
-            if(operation_extra_size > 0) {
+            if (operation_extra_size > 0) {
                 msgpack_pack_object(mp_pck, kv->key);
                 pack_extra_operation_subfields(mp_pck, &kv->val, operation_extra_size);
             }
@@ -477,11 +477,11 @@ static int pack_json_payload(bool operation_extracted, int operation_extra_size,
         }
         
         ret = msgpack_pack_object(mp_pck, kv->key);
-        if(ret < 0) {
+        if (ret < 0) {
             return ret;
         }
         ret = msgpack_pack_object(mp_pck, kv->val);
-        if(ret < 0) {
+        if (ret < 0) {
             return ret;
         }
     }
@@ -513,15 +513,15 @@ static int stackdriver_format(struct flb_config *config,
     struct flb_stackdriver *ctx = plugin_context;
 
     /* Parameters in severity */
-    bool severity_extracted = false;
+    int severity_extracted = FLB_FALSE;
     severity_t severity;
 
     /* Parameters in Operation */
     flb_sds_t operation_id;
     flb_sds_t operation_producer;
-    bool operation_first = false;
-    bool operation_last = false;
-    bool operation_extracted = false;
+    int operation_first = FLB_FALSE;
+    int operation_last = FLB_FALSE;
+    int operation_extracted = FLB_FALSE;
     int operation_extra_size = 0;
 
 
@@ -612,34 +612,34 @@ static int stackdriver_format(struct flb_config *config,
         /* Extract severity */
          if (ctx->severity_key
             && get_severity_level(&severity, obj, ctx->severity_key) == 0) {
-            severity_extracted = true;
+            severity_extracted = FLB_TRUE;
             entry_size += 1;
         }
 
         /* Extract operation */
         operation_id = flb_sds_create("");
         operation_producer = flb_sds_create("");
-        operation_first = false;
-        operation_last = false;
+        operation_first = FLB_FALSE;
+        operation_last = FLB_FALSE;
         operation_extra_size = 0;
         operation_extracted = extract_operation(&operation_id, &operation_producer,
                                                 &operation_first, &operation_last, obj, &operation_extra_size);
         
-        if (operation_extracted) {
+        if (operation_extracted == FLB_TRUE) {
             entry_size += 1;
         }
 
         msgpack_pack_map(&mp_pck, entry_size);
         
         /* Add severity into the log entry */
-        if (severity_extracted) {
+        if (severity_extracted == FLB_TRUE) {
             msgpack_pack_str(&mp_pck, 8);
             msgpack_pack_str_body(&mp_pck, "severity", 8);
             msgpack_pack_int(&mp_pck, severity);
         }
 
         /* Add operation field into the log entry */
-        if (operation_extracted) {
+        if (operation_extracted == FLB_TRUE) {
             add_operation_field(&operation_id, &operation_producer,
                                 &operation_first, &operation_last, &mp_pck);
         }
