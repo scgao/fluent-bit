@@ -1,10 +1,10 @@
 #define EMPTY_PAYLOAD	"["		\
-	"1591057541,"			\
+	"1591111124,"			\
 	"{"				\
 	"}]"
 
 #define EMPTY_PAYLOAD_WITH_VALID_OPERATION	"["		\
-	"1591057541,"			\
+	"1591111124,"			\
 	"{"				\
         "\"logging.googleapis.com/operation\": "		\
         "{"            \
@@ -16,9 +16,9 @@
 	"}]"
 
 #define COMMON_PAYLOAD_WITHOUT_OPERATION "["		\
-	"1591057541,"			\
+	"1591111124,"			\
 	"{"				\
-	"\"key_0\": false,"		\
+	"\"message\": \"COMMON_PAYLOAD_WITHOUT_OPERATION\","		\
 	"\"key_1\": true,"		\
 	"\"key_2\": \"some string\","		\
 	"\"key_3\": 0.12345678,"		\
@@ -27,7 +27,7 @@
 	"}]"
 
 #define COMMON_PAYLOAD_WITH_VALID_OPERATION "["		\
-	"1591057541,"			\
+	"1591111124,"			\
 	"{"				\
     "\"logging.googleapis.com/operation\": "		\
         "{"            \
@@ -35,8 +35,8 @@
             "\"producer\": \"PRODUCER1\","      \
             "\"first\": true,"      \
             "\"last\": false"       \
-        "}"     \
-	"\"key_0\": false,"		\
+        "},"     \
+	"\"message\": \"COMMON_PAYLOAD_WITH_VALID_OPERATION\","		\
 	"\"key_1\": true,"		\
 	"\"key_2\": \"some string\","		\
 	"\"key_3\": 0.12345678,"		\
@@ -45,10 +45,10 @@
 	"}]"
 
 #define INCORRECT_TYPE_OF_OPERATION "["		\
-	"1591057541,"			\
+	"1591111124,"			\
 	"{"				\
     "\"logging.googleapis.com/operation\": \"some string\","		\
-	"\"key_0\": false,"		\
+	"\"message\": \"INCORRECT_TYPE_OF_OPERATION\","		\
 	"\"key_1\": true,"		\
 	"\"key_2\": \"some string\","		\
 	"\"key_3\": 0.12345678,"		\
@@ -57,15 +57,15 @@
 	"}]"
 
 #define MISSING_ID "["		\
-	"1591057541,"			\
+	"1591111124,"			\
 	"{"				\
     "\"logging.googleapis.com/operation\": "		\
         "{"            \
             "\"producer\": \"PRODUCER1\","      \
             "\"first\": true,"      \
             "\"last\": false"       \
-        "}"     \
-	"\"key_0\": false,"		\
+        "},"     \
+	"\"message\": \"MISSING_ID\","		\
 	"\"key_1\": true,"		\
 	"\"key_2\": \"some string\","		\
 	"\"key_3\": 0.12345678,"		\
@@ -74,15 +74,15 @@
 	"}]"
 
 #define MISSING_PRODUCER "["		\
-	"1591057541,"			\
+	"1591111124,"			\
 	"{"				\
     "\"logging.googleapis.com/operation\": "		\
         "{"            \
             "\"id\": \"ID1\","      \
             "\"first\": true,"      \
             "\"last\": false"       \
-        "}"     \
-	"\"key_0\": false,"		\
+        "},"     \
+	"\"message\": \"MISSING_PRODUCER\","		\
 	"\"key_1\": true,"		\
 	"\"key_2\": \"some string\","		\
 	"\"key_3\": 0.12345678,"		\
@@ -91,7 +91,7 @@
 	"}]"
 
 #define INCORRECT_TYPE_OF_ID "["		\
-	"1591057541,"			\
+	"1591111124,"			\
 	"{"				\
     "\"logging.googleapis.com/operation\": "		\
         "{"            \
@@ -99,8 +99,8 @@
             "\"producer\": \"PRODUCER1\","      \
             "\"first\": true,"      \
             "\"last\": false"       \
-        "}"     \
-	"\"key_0\": false,"		\
+        "},"     \
+	"\"message\": \"INCORRECT_TYPE_OF_ID\","		\
 	"\"key_1\": true,"		\
 	"\"key_2\": \"some string\","		\
 	"\"key_3\": 0.12345678,"		\
@@ -109,16 +109,16 @@
 	"}]"
 
 #define INCORRECT_TYPE_OF_FIRST "["		\
-	"1591057541,"			\
+	"1591111124,"			\
 	"{"				\
     "\"logging.googleapis.com/operation\": "		\
         "{"            \
             "\"id\": \"ID1\","          \
             "\"producer\": \"PRODUCER1\","      \
-            "\"first\": "some string","      \
+            "\"first\": \"some string\","      \
             "\"last\": false"       \
-        "}"     \
-	"\"key_0\": false,"		\
+        "},"     \
+	"\"message\": \"INCORRECT_TYPE_OF_FIRST\","		\
 	"\"key_1\": true,"		\
 	"\"key_2\": \"some string\","		\
 	"\"key_3\": 0.12345678,"		\
@@ -127,7 +127,7 @@
 	"}]"
 
 #define EXTRA_SUB_FIELD "["		\
-	"1591057541,"			\
+	"1591111124,"			\
 	"{"				\
     "\"logging.googleapis.com/operation\": "		\
         "{"            \
@@ -136,8 +136,8 @@
             "\"first\": true,"      \
             "\"last\": false,"       \
             "\"extra_key1\": \"extra_val1\""       \
-        "}"     \
-	"\"key_0\": false,"		\
+        "},"     \
+	"\"message\": \"EXTRA_SUB_FIELD\","		\
 	"\"key_1\": true,"		\
 	"\"key_2\": \"some string\","		\
 	"\"key_3\": 0.12345678,"		\

@@ -1,5 +1,5 @@
 #define LONG_PAYLOAD_WITH_VALID_OPERATION	"["		\
-	"1591057541,"			\
+	"1591111124,"			\
 	"{"				\
     "\"logging.googleapis.com/operation\": "		\
         "{"            \
@@ -7,8 +7,8 @@
             "\"producer\": \"PRODUCER1\","      \
             "\"first\": true,"      \
             "\"last\": false"       \
-        "}"     \
-	"\"key_0\": \"val_0\","		\
+        "},"     \
+	"\"message\": \"LONG_PAYLOAD_WITH_VALID_OPERATION\","		\
 	"\"key_1\": \"val_1\","		\
 	"\"key_2\": \"val_2\","		\
 	"\"key_3\": \"val_3\","		\
