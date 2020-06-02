@@ -596,7 +596,7 @@ static int stackdriver_format(const void *data, size_t bytes,
         }
 
         /* Add operation field into the log entry */
-        if (operation_extracted == true) {
+        if (operation_extracted) {
             add_operation_field(&operation_id, &operation_producer,
                                 &operation_first, &operation_last, &mp_pck);
         }
