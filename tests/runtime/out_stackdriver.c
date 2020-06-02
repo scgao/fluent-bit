@@ -27,7 +27,7 @@ TEST_LIST = {
     {"Missing id: ",  missing_id},
     {"Missing producer: ",  missing_producer},
     {"Incorrect type of id: ",  incorrect_type_of_id},
-    {"Incorrect type of first: ",  INCORRECT_TYPE_OF_FIRST},
+    {"Incorrect type of first: ",  incorrect_type_of_first},
     {"Extra sub-field: ",  extra_sub_field},
     {NULL, NULL}
 };
