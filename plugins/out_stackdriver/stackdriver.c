@@ -630,7 +630,7 @@ static int stackdriver_format(const void *data, size_t bytes,
         msgpack_pack_str(&mp_pck, s);
         msgpack_pack_str_body(&mp_pck, time_formatted, s);
 
-        /* Clean up id and producer*/
+        /* Clean up id and producer */
         flb_sds_destroy(operation_id);
         flb_sds_destroy(operation_producer);
     }
