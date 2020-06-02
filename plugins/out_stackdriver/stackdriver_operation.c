@@ -52,7 +52,7 @@ void add_operation_field(flb_sds_t *operation_id, flb_sds_t *operation_producer,
     }
 }
 
-/* Return true if operation exists*/
+/* Return true if operation exists */
 bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer, 
                               bool *operation_first, bool *operation_last, 
                               msgpack_object *obj)
