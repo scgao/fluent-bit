@@ -458,36 +458,6 @@ static void pack_json_payload(bool operation_extracted, msgpack_packer* mp_pck,
     }
 }
 
-static void print_json_payload(const char* file_to_write, msgpack_object* obj) 
-{
-    /*FILE *fp_jsonPayload;
-    fp_jsonPayload = fopen(file_to_write, "w+");*/
-    printf("The input jsonPayload is: \n");
-    msgpack_object_print(stdout, *obj);
-    printf("\n");
-    fflush(stdout);
-    /*fclose(fp_jsonPayload);*/
-}
-
-static void print_packer(const char* file_to_write, msgpack_sbuffer* mp_sbuf) 
-{
-    /*FILE *fp_packer;
-    fp_packer = fopen(file_to_write, "w+");*/
-    msgpack_zone mempool;
-    msgpack_zone_init(&mempool, 2048);
-
-    msgpack_object deserialized;
-    msgpack_unpack(mp_sbuf->data, mp_sbuf->size, NULL, &mempool, &deserialized);
-	
-    printf("The msg_packer is: \n");
-    msgpack_object_print(stdout, deserialized);
-    printf("\n");
-    fflush(stdout);
-    msgpack_zone_destroy(&mempool);
-
-    /*fclose(fp_packer);*/
-}
-
 static int stackdriver_format(const void *data, size_t bytes,
                               const char *tag, size_t tag_len,
                               char **out_data, size_t *out_size,
@@ -630,9 +600,6 @@ static int stackdriver_format(const void *data, size_t bytes,
             add_operation_field(&operation_id, &operation_producer,
                                 &operation_first, &operation_last, &mp_pck);
         }
-        
-        /* print out the jsonPayload*/
-        print_json_payload(JSONPAYLOAD_WRITE_PATH, obj);
 
         /* jsonPayload */
         msgpack_pack_str(&mp_pck, 11);
@@ -667,9 +634,6 @@ static int stackdriver_format(const void *data, size_t bytes,
         flb_sds_destroy(operation_id);
         flb_sds_destroy(operation_producer);
     }
-
-    /* print out the packer*/
-    print_packer(PACKER_WRITE_PATH, &mp_sbuf);
 
     /* Convert from msgpack to JSON */
     out_buf = flb_msgpack_raw_to_json_sds(mp_sbuf.data, mp_sbuf.size);
