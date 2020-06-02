@@ -125,44 +125,13 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
     }
     flb_sds_destroy(field_name); 
     flb_sds_destroy(sub_field_name);
-    /*
-    if (ret == true) {
-        if (flb_sds_is_empty(*operation_producer) == FLB_TRUE || flb_sds_is_empty(*operation_id) == FLB_TRUE) {
-            printf("empty id or producer!\n");
-            fflush(stdout);
-            ret = false;
-        }
-        else {
-            printf("valid operation!\n");
-            fflush(stdout);
-        }
-    }*/
-
-    if (op_status == OPERATION_EXISTED 
-        && (flb_sds_is_empty(*operation_producer) == FLB_TRUE || flb_sds_is_empty(*operation_id) == FLB_TRUE))
-    {
-        op_status = EMPTY_ID_OR_PRODUCER;
-    }
-
-    switch (op_status)
-    {
-        case OPERATION_EXISTED:
-            printf("valid operation!\n");
-            break;
-        case NO_OPERATION:
-            printf("no operation!\n");
-            break;
-        case EMPTY_ID_OR_PRODUCER:
-            printf("empty id or producer!\n");
-            break;
-        case EXTRA_OR_INVALID_TYPE:
-            printf("extra sub-fields or invalid type!\n");
-    }
-    fflush(stdout);
-	
 
     if (op_status == OPERATION_EXISTED) {
-         return true;
+        if (flb_sds_is_empty(*operation_producer) == FLB_TRUE || flb_sds_is_empty(*operation_id) == FLB_TRUE) {
+            op_status = EMPTY_ID_OR_PRODUCER;
+            return false;
+        }
+        return true;
     }
     return false;
 }
