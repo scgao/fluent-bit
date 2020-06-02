@@ -110,7 +110,7 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
                                     *operation_last = tmp_p->val.via.boolean;
                                 }
                                 else {
-                                    /* extra sub-fiels or incorrect type of sub-fields */
+                                    /* extra sub-fields or incorrect type of sub-fields */
                                     op_status = EXTRA_OR_INVALID_TYPE;
                                     break;
                                 }
