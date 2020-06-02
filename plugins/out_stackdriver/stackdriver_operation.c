@@ -59,7 +59,7 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
 {
     operation_status op_status = NO_OPERATION;
     flb_sds_t field_name = flb_sds_create("");
-	flb_sds_t sub_field_name = flb_sds_create("");
+    flb_sds_t sub_field_name = flb_sds_create("");
 
     if (obj->via.map.size != 0) {
         msgpack_object_kv* p = obj->via.map.ptr;
@@ -161,4 +161,3 @@ int pack_object_except_operation(msgpack_packer *mp_pck, msgpack_object *obj){
         return 0;
     }
 }
-
