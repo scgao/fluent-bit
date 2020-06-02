@@ -578,7 +578,7 @@ static int stackdriver_format(const void *data, size_t bytes,
         operation_extracted = extract_operation(&operation_id, &operation_producer,
                               &operation_first, &operation_last, obj);
         
-        if (operation_extracted == true) {
+        if (operation_extracted) {
             entry_size += 1;
         }
 
