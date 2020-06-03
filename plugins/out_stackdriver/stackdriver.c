@@ -465,7 +465,7 @@ static int stackdriver_format(const void *data, size_t bytes,
 {
     int len;
     int array_size = 0;
-    /* The defaulf value is 3: timestamp, jsonPayload, logName. When the operation exists, entry_size will increase by 1*/
+    /* The defaulf value is 3: timestamp, jsonPayload, logName. When the operation exists, entry_size will increase by 1 */
     int entry_size = 3; 
     size_t s;
     size_t off = 0;
@@ -572,7 +572,7 @@ static int stackdriver_format(const void *data, size_t bytes,
          * }
          */
         
-        /*  Parse jsonPayload and extract operation first*/
+        /*  Parse jsonPayload and extract operation first */
         operation_id = flb_sds_create("");
         operation_producer = flb_sds_create("");
         operation_extracted = extract_operation(&operation_id, &operation_producer,
@@ -599,6 +599,7 @@ static int stackdriver_format(const void *data, size_t bytes,
         if (operation_extracted) {
             add_operation_field(&operation_id, &operation_producer,
                                 &operation_first, &operation_last, &mp_pck);
+            
         }
 
         /* jsonPayload */
