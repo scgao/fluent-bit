@@ -18,6 +18,13 @@
 #include "stackdriver.h"
 #include "stackdriver_operation.h"
 
+typedef enum {
+    NO_OPERATION = 1,
+    EXTRA_OR_INVALID_TYPE = 2,
+    OPERATION_EXISTED = 3
+} operation_status;
+
+
 void add_operation_field(flb_sds_t *operation_id, flb_sds_t *operation_producer, 
                                 bool *operation_first, bool *operation_last, 
                                 msgpack_packer *mp_pck)
@@ -125,15 +132,10 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
     }
     flb_sds_destroy(field_name); 
     flb_sds_destroy(sub_field_name);
-
-    if (op_status == OPERATION_EXISTED) {
-        if (flb_sds_is_empty(*operation_producer) == FLB_TRUE || flb_sds_is_empty(*operation_id) == FLB_TRUE) {
-            op_status = EMPTY_ID_OR_PRODUCER;
-            return false;
-        }
-        return true;
-    }
-    return false;
+	
+    /* Invalid if id/producer is empty */
+    return op_status == OPERATION_EXISTED
+        && flb_sds_is_empty(*operation_producer) == FLB_FALSE && flb_sds_is_empty(*operation_id) == FLB_FALSE;
 }
 
 int pack_object_except_operation(msgpack_packer *mp_pck, msgpack_object *obj){
