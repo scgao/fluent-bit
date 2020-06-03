@@ -65,10 +65,11 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
                               msgpack_object *obj)
 {
     operation_status op_status = NO_OPERATION;
-    flb_sds_t field_name = flb_sds_create("");
-    flb_sds_t sub_field_name = flb_sds_create("");
 
     if (obj->via.map.size != 0) {
+        flb_sds_t field_name = flb_sds_create("");
+    	flb_sds_t sub_field_name = flb_sds_create("");
+    	
         msgpack_object_kv* p = obj->via.map.ptr;
         msgpack_object_kv* const pend = obj->via.map.ptr + obj->via.map.size;
 
@@ -77,62 +78,66 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
                 flb_sds_destroy(field_name);
                 field_name = flb_sds_create_len(p->key.via.str.ptr, p->key.via.str.size);
                 
-                if (strcmp(field_name, OPERATION_FIELD_IN_JSON) == 0 && p->val.type == MSGPACK_OBJECT_MAP) {
-                    flb_sds_destroy(*operation_id);
-                    flb_sds_destroy(*operation_producer);
+                if (strcmp(field_name, OPERATION_FIELD_IN_JSON) != 0 || p->val.type != MSGPACK_OBJECT_MAP) {
+                    continue;
+                }
 
-                    *operation_id = flb_sds_create("");
-                    *operation_producer = flb_sds_create("");
-                    *operation_first = false;
-                    *operation_last = false;
+                flb_sds_destroy(*operation_id);
+                flb_sds_destroy(*operation_producer);
 
-                    op_status = OPERATION_EXISTED;
+                *operation_id = flb_sds_create("");
+                *operation_producer = flb_sds_create("");
+                *operation_first = false;
+                *operation_last = false;
 
-                    msgpack_object sub_field = p->val;
-                    if (sub_field.via.map.size != 0) {
-                        msgpack_object_kv* tmp_p = sub_field.via.map.ptr;
-                        msgpack_object_kv* const tmp_pend = sub_field.via.map.ptr + sub_field.via.map.size;
+                op_status = OPERATION_EXISTED;
 
-                        for (; tmp_p < tmp_pend; ++tmp_p) {
-                            if (tmp_p->key.type != MSGPACK_OBJECT_STR) {
+                msgpack_object sub_field = p->val;
+                if (sub_field.via.map.size == 0) {
+                    /* Empty 'operation' field */
+                    break;
+                }
+                else {
+                    msgpack_object_kv* tmp_p = sub_field.via.map.ptr;
+                    msgpack_object_kv* const tmp_pend = sub_field.via.map.ptr + sub_field.via.map.size;
+
+                    for (; tmp_p < tmp_pend; ++tmp_p) {
+                        if (tmp_p->key.type != MSGPACK_OBJECT_STR) {
+                            op_status = EXTRA_OR_INVALID_TYPE;
+                            break;
+                        }
+                        else {   
+                            flb_sds_destroy(sub_field_name);
+                            sub_field_name = flb_sds_create_len(tmp_p->key.via.str.ptr, tmp_p->key.via.str.size);
+
+                            if (strcmp(sub_field_name, "id") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
+                                flb_sds_destroy(*operation_id);
+                                *operation_id = flb_sds_create_len(tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
+                            }
+                            else if (strcmp(sub_field_name, "producer") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
+                                flb_sds_destroy(*operation_producer);
+                                *operation_producer = flb_sds_create_len(tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
+                            }
+                            else if (strcmp(sub_field_name, "first") == 0 && tmp_p->val.type == MSGPACK_OBJECT_BOOLEAN) {
+                                *operation_first = tmp_p->val.via.boolean;
+                            }
+                            else if (strcmp(sub_field_name, "last") == 0 && tmp_p->val.type == MSGPACK_OBJECT_BOOLEAN) {
+                                *operation_last = tmp_p->val.via.boolean;
+                            }
+                            else {
+                                /* extra sub-fields or incorrect type of sub-fields */
                                 op_status = EXTRA_OR_INVALID_TYPE;
                                 break;
                             }
-                            else {   
-                                flb_sds_destroy(sub_field_name);
-                                sub_field_name = flb_sds_create_len(tmp_p->key.via.str.ptr, tmp_p->key.via.str.size);
-
-                                if (strcmp(sub_field_name, "id") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
-                                    flb_sds_destroy(*operation_id);
-                                    *operation_id = flb_sds_create_len(tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
-                                }
-                                else if (strcmp(sub_field_name, "producer") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
-                                    flb_sds_destroy(*operation_producer);
-                                    *operation_producer = flb_sds_create_len(tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
-                                }
-                                else if (strcmp(sub_field_name, "first") == 0 && tmp_p->val.type == MSGPACK_OBJECT_BOOLEAN) {
-                                    *operation_first = tmp_p->val.via.boolean;
-                                }
-                                else if (strcmp(sub_field_name, "last") == 0 && tmp_p->val.type == MSGPACK_OBJECT_BOOLEAN) {
-                                    *operation_last = tmp_p->val.via.boolean;
-                                }
-                                else {
-                                    /* extra sub-fields or incorrect type of sub-fields */
-                                    op_status = EXTRA_OR_INVALID_TYPE;
-                                    break;
-                                }
-                            }
                         }
                     }
-                    
-                    break;
                 }
             }
         }
+        flb_sds_destroy(field_name); 
+    	flb_sds_destroy(sub_field_name);
     }
-    flb_sds_destroy(field_name); 
-    flb_sds_destroy(sub_field_name);
-	
+    
     /* Invalid if id/producer is empty */
     return op_status == OPERATION_EXISTED
         && flb_sds_is_empty(*operation_producer) == FLB_FALSE && flb_sds_is_empty(*operation_id) == FLB_FALSE;
