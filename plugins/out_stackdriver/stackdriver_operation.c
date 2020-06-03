@@ -20,8 +20,7 @@
 
 typedef enum {
     NO_OPERATION = 1,
-    EXTRA_OR_INVALID_TYPE = 2,
-    OPERATION_EXISTED = 3
+    OPERATION_EXISTED = 2
 } operation_status;
 
 
@@ -94,8 +93,9 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
 
                 msgpack_object sub_field = p->val;
                 if (sub_field.via.map.size == 0) {
-                    /* Empty 'operation' field */
-                    break;
+                    flb_sds_destroy(field_name); 
+                    flb_sds_destroy(sub_field_name);
+                    return false;
                 }
                 else {
                     msgpack_object_kv* tmp_p = sub_field.via.map.ptr;
@@ -103,8 +103,10 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
 
                     for (; tmp_p < tmp_pend; ++tmp_p) {
                         if (tmp_p->key.type != MSGPACK_OBJECT_STR) {
-                            op_status = EXTRA_OR_INVALID_TYPE;
-                            break;
+                            /* incorrect type of sub-fields */
+                            flb_sds_destroy(field_name); 
+                            flb_sds_destroy(sub_field_name);
+                            return false;
                         }
                         else {   
                             flb_sds_destroy(sub_field_name);
@@ -126,8 +128,9 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
                             }
                             else {
                                 /* extra sub-fields or incorrect type of sub-fields */
-                                op_status = EXTRA_OR_INVALID_TYPE;
-                                break;
+                                flb_sds_destroy(field_name); 
+    		                    flb_sds_destroy(sub_field_name);
+                                return false;
                             }
                         }
                     }
