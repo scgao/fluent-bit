@@ -77,15 +77,7 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
                     flb_sds_destroy(field_name);
                     continue;
                 }
-
                 flb_sds_destroy(field_name);
-                flb_sds_destroy(*operation_id);
-                flb_sds_destroy(*operation_producer);
-
-                *operation_id = flb_sds_create("");
-                *operation_producer = flb_sds_create("");
-                *operation_first = false;
-                *operation_last = false;
 
                 op_status = OPERATION_EXISTED;
 
