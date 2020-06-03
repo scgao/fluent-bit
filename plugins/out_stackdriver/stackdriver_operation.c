@@ -143,7 +143,7 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
 }
 
 int pack_object_except_operation(msgpack_packer *mp_pck, msgpack_object *obj){
-/* obj type must be MSGPACK_OBJECT_MAP */
+	/* obj type must be MSGPACK_OBJECT_MAP */
     int ret = msgpack_pack_map(mp_pck, obj->via.map.size - 1);
     if(ret < 0) {
         return ret;

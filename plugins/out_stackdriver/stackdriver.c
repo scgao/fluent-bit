@@ -444,17 +444,81 @@ static int get_severity_level(severity_t * s, const msgpack_object * o,
     return -1;
 }
 
-static void pack_json_payload(bool operation_extracted, msgpack_packer* mp_pck, 
+static void pack_json_payload(bool operation_extracted, bool insertId_extracted, msgpack_packer *mp_pck, 
                                 msgpack_object *obj)
 {
     /* Specified fields include operation, sourceLocation ... */
     /* TODO: deal with other fields later */
 
-    if (operation_extracted == true) {
+    if (operation_extracted) {
         pack_object_except_operation(mp_pck, obj);
+    }
+    else if (insertId_extracted) {
+        pack_object_except_insertId(mp_pck, obj);
     }
     else {
         msgpack_pack_object(mp_pck, *obj);
+    }
+}
+
+bool extract_insertId(flb_sds_t *insertId, msgpack_object *obj) {
+    bool insertId_existed = false;
+
+    if (obj->via.map.size != 0) {
+        flb_sds_t field_name = flb_sds_create("");
+    	
+        msgpack_object_kv* p = obj->via.map.ptr;
+        msgpack_object_kv* const pend = obj->via.map.ptr + obj->via.map.size;
+
+        for (; p < pend; ++p) {
+            if (p->key.type == MSGPACK_OBJECT_STR && p->val.type == MSGPACK_OBJECT_STR) {
+                field_name = flb_sds_copy(field_name, p->key.via.str.ptr, p->key.via.str.size);
+                
+                if (strcmp(field_name, "insertId") == 0) {
+                	*insertId = flb_sds_copy(*insertId, p->val.via.str.ptr, p->val.via.str.size);
+                    insertId_existed = true;
+                    break;
+                }
+            }
+        }
+        flb_sds_destroy(field_name); 
+    }
+    
+    /* Invalid if insertId is empty */
+	return insertId_existed && flb_sds_is_empty(*insertId) == FLB_FALSE;
+}
+
+void add_insertId_field(flb_sds_t *insertId, msgpack_packer *mp_pck) {
+	msgpack_pack_str(mp_pck, 8);
+    msgpack_pack_str_body(mp_pck, "insertId", 8);
+
+    msgpack_pack_str(mp_pck, flb_sds_len(*insertId));
+    msgpack_pack_str_body(mp_pck, *insertId, flb_sds_len(*insertId));
+}
+
+void pack_object_except_insertId(msgpack_packer *mp_pck, msgpack_object *obj) {
+	/* obj type must be MSGPACK_OBJECT_MAP */
+    int ret = msgpack_pack_map(mp_pck, obj->via.map.size - 1);
+    if(ret < 0) {
+        return ret;
+    }
+    else {
+        msgpack_object_kv* kv = obj->via.map.ptr;
+        msgpack_object_kv* const kvend = obj->via.map.ptr + obj->via.map.size;
+        for(; kv != kvend; ++kv) {
+            flb_sds_t cur_key = flb_sds_create_len(kv->key.via.str.ptr, kv->key.via.str.size);
+            if (strcmp(cur_key, "insertId") == 0 && kv->val.type == MSGPACK_OBJECT_STR) {
+                flb_sds_destroy(cur_key);
+                continue;
+            }
+            
+            flb_sds_destroy(cur_key);
+            ret = msgpack_pack_object(mp_pck, kv->key);
+            if(ret < 0) { return ret; }
+            ret = msgpack_pack_object(mp_pck, kv->val);
+            if(ret < 0) { return ret; }
+        }
+        return 0;
     }
 }
 
@@ -480,13 +544,16 @@ static int stackdriver_format(const void *data, size_t bytes,
     msgpack_packer mp_pck;
     flb_sds_t out_buf;
 
-    /* Parameters in Operation*/
+    /* Parameters for Operation */
     flb_sds_t operation_id;
     flb_sds_t operation_producer;
     bool operation_first = false;
     bool operation_last = false;
     bool operation_extracted = false;
 
+	/* Parameters for insertId */
+	flb_sds_t insertId;
+    bool insertId_extracted = false;
 
     /* Count number of records */
     array_size = flb_mp_count(data, bytes);
@@ -572,7 +639,16 @@ static int stackdriver_format(const void *data, size_t bytes,
          * }
          */
         
-        /*  Parse jsonPayload and extract operation first*/
+        /* Parse jsonPayload and extract special fields */
+        /* Extract insertId */
+        insertId = flb_sds_create("");
+        insertId_extracted = extract_insertId(&insertId, obj);
+
+        if (insertId_extracted) {
+            entry_size += 1;
+        }
+
+        /* Extract operation */
         operation_id = flb_sds_create("");
         operation_producer = flb_sds_create("");
         operation_extracted = extract_operation(&operation_id, &operation_producer,
@@ -595,6 +671,11 @@ static int stackdriver_format(const void *data, size_t bytes,
             msgpack_pack_map(&mp_pck, entry_size);
         }
 
+        /* Add insertId field into the log entry */
+        if (insertId_extracted) {
+            add_insertId_field(&insertId, &mp_pck);
+        }
+
         /* Add operation field into the log entry */
         if (operation_extracted) {
             add_operation_field(&operation_id, &operation_producer,
@@ -604,7 +685,7 @@ static int stackdriver_format(const void *data, size_t bytes,
         /* jsonPayload */
         msgpack_pack_str(&mp_pck, 11);
         msgpack_pack_str_body(&mp_pck, "jsonPayload", 11);
-        pack_json_payload(operation_extracted, &mp_pck, obj);
+        pack_json_payload(operation_extracted, insertId_extracted, &mp_pck, obj);
 
         /* logName */
         len = snprintf(path, sizeof(path) - 1,
@@ -630,7 +711,8 @@ static int stackdriver_format(const void *data, size_t bytes,
         msgpack_pack_str(&mp_pck, s);
         msgpack_pack_str_body(&mp_pck, time_formatted, s);
 
-        /* Clean up id and producer */
+        /* Clean up special fields */
+        flb_sds_destroy(insertId);
         flb_sds_destroy(operation_id);
         flb_sds_destroy(operation_producer);
     }
