@@ -30,6 +30,4 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
                               bool *operation_first, bool *operation_last, 
                               msgpack_object *obj);
 
-int pack_object_except_operation(msgpack_packer *mp_pck, msgpack_object *obj);
-
 #endif

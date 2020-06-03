@@ -26,6 +26,4 @@ void add_insertId_field(flb_sds_t *insertId, msgpack_packer *mp_pck);
 
 bool extract_insertId(flb_sds_t *insertId, msgpack_object *obj);
 
-int pack_object_except_insertId(msgpack_packer *mp_pck, msgpack_object *obj);
-
 #endif

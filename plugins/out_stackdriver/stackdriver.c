@@ -445,21 +445,42 @@ static int get_severity_level(severity_t * s, const msgpack_object * o,
     return -1;
 }
 
-static void pack_json_payload(bool operation_extracted, bool insertId_extracted, msgpack_packer *mp_pck, 
-                                msgpack_object *obj)
+static int pack_json_payload(bool operation_extracted, bool insertId_extracted, msgpack_packer *mp_pck, 
+                                msgpack_object *obj, int special_fields_size)
 {
-    /* Specified fields include operation, sourceLocation ... */
-    /* TODO: deal with other fields later */
-
-    if (operation_extracted) {
-        pack_object_except_operation(mp_pck, obj);
-    }
-    else if (insertId_extracted) {
-        pack_object_except_insertId(mp_pck, obj);
+    /* Specified fields include insertId, operation ... */
+	/* obj type must be MSGPACK_OBJECT_MAP */
+    int ret = msgpack_pack_map(mp_pck, obj->via.map.size - special_fields_size);
+    if(ret < 0) {
+        return ret;
     }
     else {
-        msgpack_pack_object(mp_pck, *obj);
-    }
+        msgpack_object_kv* kv = obj->via.map.ptr;
+        msgpack_object_kv* const kvend = obj->via.map.ptr + obj->via.map.size;
+        flb_sds_t cur_key = flb_sds_create("");
+
+        for(; kv != kvend; ++kv) {
+            cur_key = flb_sds_copy(cur_key, kv->key.via.str.ptr, kv->key.via.str.size);
+
+            if (insertId_extracted && strcmp(cur_key, "insertId") == 0 
+            	&& kv->val.type == MSGPACK_OBJECT_STR) {
+                continue;
+            }
+
+            if (operation_extracted && strcmp(cur_key, OPERATION_FIELD_IN_JSON) == 0 
+            	&& kv->val.type == MSGPACK_OBJECT_MAP) {
+                continue;
+            }
+            
+            ret = msgpack_pack_object(mp_pck, kv->key);
+            if(ret < 0) { return ret; }
+            ret = msgpack_pack_object(mp_pck, kv->val);
+            if(ret < 0) { return ret; }
+        }
+
+        flb_sds_destroy(cur_key);
+        return 0;
+    }	
 }
 
 static int stackdriver_format(const void *data, size_t bytes,
@@ -471,6 +492,8 @@ static int stackdriver_format(const void *data, size_t bytes,
     int array_size = 0;
     /* The defaulf value is 3: timestamp, jsonPayload, logName. When the operation exists, entry_size will increase by 1*/
     int entry_size = 3; 
+    int special_fields_size = 0;
+
     size_t s;
     size_t off = 0;
     char path[PATH_MAX];
@@ -585,7 +608,7 @@ static int stackdriver_format(const void *data, size_t bytes,
         insertId_extracted = extract_insertId(&insertId, obj);
 
         if (insertId_extracted) {
-            entry_size += 1;
+            special_fields_size += 1;
         }
 
         /* Extract operation */
@@ -595,9 +618,10 @@ static int stackdriver_format(const void *data, size_t bytes,
                               &operation_first, &operation_last, obj);
         
         if (operation_extracted) {
-            entry_size += 1;
+            special_fields_size += 1;
         }
 
+        entry_size += special_fields_size;
         if (ctx->severity_key
             && get_severity_level(&severity, obj, ctx->severity_key) == 0) {
             /* additional field for severity */
@@ -625,7 +649,7 @@ static int stackdriver_format(const void *data, size_t bytes,
         /* jsonPayload */
         msgpack_pack_str(&mp_pck, 11);
         msgpack_pack_str_body(&mp_pck, "jsonPayload", 11);
-        pack_json_payload(operation_extracted, insertId_extracted, &mp_pck, obj);
+        pack_json_payload(operation_extracted, insertId_extracted, &mp_pck, obj, special_fields_size);
 
         /* logName */
         len = snprintf(path, sizeof(path) - 1,

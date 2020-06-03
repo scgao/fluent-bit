@@ -53,28 +53,3 @@ bool extract_insertId(flb_sds_t *insertId, msgpack_object *obj) {
 	return insertId_existed && flb_sds_is_empty(*insertId) == FLB_FALSE;
 }
 
-int pack_object_except_insertId(msgpack_packer *mp_pck, msgpack_object *obj) {
-	/* obj type must be MSGPACK_OBJECT_MAP */
-    int ret = msgpack_pack_map(mp_pck, obj->via.map.size - 1);
-    if(ret < 0) {
-        return ret;
-    }
-    else {
-        msgpack_object_kv* kv = obj->via.map.ptr;
-        msgpack_object_kv* const kvend = obj->via.map.ptr + obj->via.map.size;
-        for(; kv != kvend; ++kv) {
-            flb_sds_t cur_key = flb_sds_create_len(kv->key.via.str.ptr, kv->key.via.str.size);
-            if (strcmp(cur_key, "insertId") == 0 && kv->val.type == MSGPACK_OBJECT_STR) {
-                flb_sds_destroy(cur_key);
-                continue;
-            }
-            
-            flb_sds_destroy(cur_key);
-            ret = msgpack_pack_object(mp_pck, kv->key);
-            if(ret < 0) { return ret; }
-            ret = msgpack_pack_object(mp_pck, kv->val);
-            if(ret < 0) { return ret; }
-        }
-        return 0;
-    }
-}
