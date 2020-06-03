@@ -74,8 +74,7 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
 
         for (; p < pend; ++p) {
             if (p->key.type == MSGPACK_OBJECT_STR) {
-                flb_sds_destroy(field_name);
-                field_name = flb_sds_create_len(p->key.via.str.ptr, p->key.via.str.size);
+                field_name = flb_sds_copy(field_name, p->key.via.str.ptr, p->key.via.str.size);
                 
                 if (strcmp(field_name, OPERATION_FIELD_IN_JSON) != 0 || p->val.type != MSGPACK_OBJECT_MAP) {
                     continue;
@@ -109,16 +108,13 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
                             return false;
                         }
                         else {   
-                            flb_sds_destroy(sub_field_name);
-                            sub_field_name = flb_sds_create_len(tmp_p->key.via.str.ptr, tmp_p->key.via.str.size);
+                            sub_field_name = flb_sds_copy(sub_field_name, tmp_p->key.via.str.ptr, tmp_p->key.via.str.size);
 
                             if (strcmp(sub_field_name, "id") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
-                                flb_sds_destroy(*operation_id);
-                                *operation_id = flb_sds_create_len(tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
+                                *operation_id = flb_sds_copy(*operation_id, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                             }
                             else if (strcmp(sub_field_name, "producer") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
-                                flb_sds_destroy(*operation_producer);
-                                *operation_producer = flb_sds_create_len(tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
+                                *operation_producer = flb_sds_copy(*operation_producer, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                             }
                             else if (strcmp(sub_field_name, "first") == 0 && tmp_p->val.type == MSGPACK_OBJECT_BOOLEAN) {
                                 *operation_first = tmp_p->val.via.boolean;
