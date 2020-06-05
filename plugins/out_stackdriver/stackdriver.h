@@ -48,6 +48,8 @@
 
 #define OPERATION_FIELD_IN_JSON "logging.googleapis.com/operation"
 
+#define SOURCELOCATION_IN_JSON "logging.googleapis.com/sourceLocation"
+
 struct flb_stackdriver {
     /* credentials */
     flb_sds_t credentials_file;

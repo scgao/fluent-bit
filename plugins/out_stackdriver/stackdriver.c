@@ -507,6 +507,10 @@ static int stackdriver_format(const void *data, size_t bytes,
     msgpack_packer mp_pck;
     flb_sds_t out_buf;
 
+    /* Parameters for insertId */
+	flb_sds_t insertId;
+    bool insertId_extracted = false;
+
     /* Parameters for Operation */
     flb_sds_t operation_id;
     flb_sds_t operation_producer;
@@ -514,9 +518,11 @@ static int stackdriver_format(const void *data, size_t bytes,
     bool operation_last = false;
     bool operation_extracted = false;
 
-	/* Parameters for insertId */
-	flb_sds_t insertId;
-    bool insertId_extracted = false;
+    /* Parameters for sourceLocation */
+    flb_sds_t sourceLocation_file;
+    flb_sds_t sourceLocation_line;
+    flb_sds_t sourceLocation_function;
+    bool sourceLocation_extracted = false;
 
     /* Count number of records */
     array_size = flb_mp_count(data, bytes);
