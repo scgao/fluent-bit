@@ -16,7 +16,7 @@
  *  limitations under the License.
  */
 #include "stackdriver.h"
-#include "stackdriver_operation.h"
+#include "stackdriver_sourceLocation.h"
 
 typedef enum {
     NO_SOURCELOCATION = 1,
@@ -66,42 +66,34 @@ bool extract_sourceLocation(flb_sds_t *sourceLocation_file, flb_sds_t *sourceLoc
                 flb_sds_destroy(field_name);
 
                 msgpack_object sub_field = p->val;
-                if (sub_field.via.map.size == 0) {
-                    return false;
-                }
-                else {
-                    srcLoc_status = SOURCELOCATION_EXISTED;
-            
-                    msgpack_object_kv* tmp_p = sub_field.via.map.ptr;
-                    msgpack_object_kv* const tmp_pend = sub_field.via.map.ptr + sub_field.via.map.size;
+                
+                srcLoc_status = SOURCELOCATION_EXISTED;
+        
+                msgpack_object_kv* tmp_p = sub_field.via.map.ptr;
+                msgpack_object_kv* const tmp_pend = sub_field.via.map.ptr + sub_field.via.map.size;
 
-                    for (; tmp_p < tmp_pend; ++tmp_p) {
-                        flb_sds_t sub_field_name = flb_sds_create_len(tmp_p->key.via.str.ptr, tmp_p->key.via.str.size);
+                for (; tmp_p < tmp_pend; ++tmp_p) {
+                    flb_sds_t sub_field_name = flb_sds_create_len(tmp_p->key.via.str.ptr, tmp_p->key.via.str.size);
 
-                        if (strcmp(sub_field_name, "file") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
-                            *sourceLocation_file = flb_sds_copy(*sourceLocation_file, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
-                        }
-                        else if (strcmp(sub_field_name, "line") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
-                            *sourceLocation_line = flb_sds_copy(*sourceLocation_line, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
-                        }
-                        else if (strcmp(sub_field_name, "function") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
-                            *sourceLocation_function = flb_sds_copy(*sourceLocation_function, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
-                        }
-                        else {
-                            /* extra sub-fields or incorrect type of sub-fields */ 
-                            flb_sds_destroy(sub_field_name);
-                            return false;
-                        }
-                        flb_sds_destroy(sub_field_name);
+                    if (strcmp(sub_field_name, "file") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
+                        *sourceLocation_file = flb_sds_copy(*sourceLocation_file, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                     }
+                    else if (strcmp(sub_field_name, "line") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
+                        *sourceLocation_line = flb_sds_copy(*sourceLocation_line, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
+                    }
+                    else if (strcmp(sub_field_name, "function") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
+                        *sourceLocation_function = flb_sds_copy(*sourceLocation_function, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
+                    }
+                    else {
+                        /* extra sub-fields or incorrect type of sub-fields */ 
+                        flb_sds_destroy(sub_field_name);
+                        return false;
+                    }
+                    flb_sds_destroy(sub_field_name);
                 }
             }
         }
     }
     
-    /* Invalid if id/producer is empty */
     return srcLoc_status == SOURCELOCATION_EXISTED
-        && flb_sds_is_empty(*sourceLocation_file) == FLB_FALSE 
-        && flb_sds_is_empty(*sourceLocation_line) == FLB_FALSE
-        && flb_sds_is_empty(*sourceLocation_function) == FLB_FALSE;
 }

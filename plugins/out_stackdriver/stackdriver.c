@@ -32,6 +32,7 @@
 #include "stackdriver_conf.h"
 #include "stackdriver_operation.h"
 #include "stackdriver_insertId.h"
+#include "stackdriver_sourceLocation.h"
 #include <mbedtls/base64.h>
 #include <mbedtls/sha256.h>
 
@@ -445,8 +446,8 @@ static int get_severity_level(severity_t * s, const msgpack_object * o,
     return -1;
 }
 
-static int pack_json_payload(bool operation_extracted, bool insertId_extracted, msgpack_packer *mp_pck, 
-                                msgpack_object *obj, int special_fields_size)
+static int pack_json_payload(bool insertId_extracted, bool operation_extracted, bool sourceLocation_extracted, 
+                                msgpack_packer *mp_pck, msgpack_object *obj, int special_fields_size)
 {
     /* Specified fields include insertId, operation ... */
 	/* obj type must be MSGPACK_OBJECT_MAP */
@@ -468,6 +469,11 @@ static int pack_json_payload(bool operation_extracted, bool insertId_extracted, 
             }
 
             if (operation_extracted && strcmp(cur_key, OPERATION_FIELD_IN_JSON) == 0 
+            	&& kv->val.type == MSGPACK_OBJECT_MAP) {
+                continue;
+            }
+
+            if (sourceLocation_extracted && strcmp(cur_key, SOURCELOCATION_IN_JSON) == 0 
             	&& kv->val.type == MSGPACK_OBJECT_MAP) {
                 continue;
             }
@@ -627,6 +633,17 @@ static int stackdriver_format(const void *data, size_t bytes,
             special_fields_size += 1;
         }
 
+        /* Extract sourceLocation */
+        sourceLocation_file = flb_sds_create("");
+        sourceLocation_line = flb_sds_create("");
+        sourceLocation_function = flb_sds_create("");
+        sourceLocation_extracted = extract_sourceLocation(&sourceLocation_file, &sourceLocation_line,
+                              &sourceLocation_function, obj);
+        
+        if (sourceLocation_extracted) {
+            special_fields_size += 1;
+        }
+
         entry_size += special_fields_size;
         if (ctx->severity_key
             && get_severity_level(&severity, obj, ctx->severity_key) == 0) {
@@ -651,16 +668,25 @@ static int stackdriver_format(const void *data, size_t bytes,
             add_operation_field(&operation_id, &operation_producer,
                                 &operation_first, &operation_last, &mp_pck);
         }
+
+        /* Add sourceLocation field into the log entry */
+        if (sourceLocation_extracted) {
+            add_sourceLocation_field(&sourceLocation_file, &sourceLocation_line, 
+                                &sourceLocation_function, &mp_pck);
+        }
         
         /* Clean up special fields */
         flb_sds_destroy(insertId);
         flb_sds_destroy(operation_id);
         flb_sds_destroy(operation_producer);
+        flb_sds_destroy(sourceLocation_file);
+        flb_sds_destroy(sourceLocation_line);
+        flb_sds_destroy(sourceLocation_function);
 
         /* jsonPayload */
         msgpack_pack_str(&mp_pck, 11);
         msgpack_pack_str_body(&mp_pck, "jsonPayload", 11);
-        pack_json_payload(operation_extracted, insertId_extracted, &mp_pck, obj, special_fields_size);
+        pack_json_payload(insertId_extracted, operation_extracted, sourceLocation_extracted, &mp_pck, obj, special_fields_size);
 
         /* logName */
         len = snprintf(path, sizeof(path) - 1,

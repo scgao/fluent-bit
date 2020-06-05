@@ -4,6 +4,7 @@ set(src
   stackdriver.c
   stackdriver_operation.c
   stackdriver_insertId.c
+  stackdriver_sourceLocation.c
   )
 
 FLB_PLUGIN(out_stackdriver "${src}" "")
