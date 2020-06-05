@@ -526,7 +526,7 @@ static int stackdriver_format(const void *data, size_t bytes,
 
     /* Parameters for sourceLocation */
     flb_sds_t sourceLocation_file;
-    flb_sds_t sourceLocation_line;
+    int64_t sourceLocation_line = 0;
     flb_sds_t sourceLocation_function;
     bool sourceLocation_extracted = false;
 
@@ -635,7 +635,6 @@ static int stackdriver_format(const void *data, size_t bytes,
 
         /* Extract sourceLocation */
         sourceLocation_file = flb_sds_create("");
-        sourceLocation_line = flb_sds_create("0");
         sourceLocation_function = flb_sds_create("");
         sourceLocation_extracted = extract_sourceLocation(&sourceLocation_file, &sourceLocation_line,
                               &sourceLocation_function, obj);
@@ -680,7 +679,6 @@ static int stackdriver_format(const void *data, size_t bytes,
         flb_sds_destroy(operation_id);
         flb_sds_destroy(operation_producer);
         flb_sds_destroy(sourceLocation_file);
-        flb_sds_destroy(sourceLocation_line);
         flb_sds_destroy(sourceLocation_function);
 
         /* jsonPayload */

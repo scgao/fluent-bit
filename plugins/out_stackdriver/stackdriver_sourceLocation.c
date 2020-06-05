@@ -24,7 +24,7 @@ typedef enum {
 } sourceLocation_status;
 
 
-void add_sourceLocation_field(flb_sds_t *sourceLocation_file, flb_sds_t *sourceLocation_line, 
+void add_sourceLocation_field(flb_sds_t *sourceLocation_file, int64_t *sourceLocation_line, 
                                 flb_sds_t *sourceLocation_function, msgpack_packer *mp_pck)
 {    
     msgpack_pack_str(mp_pck, 14);
@@ -35,10 +35,11 @@ void add_sourceLocation_field(flb_sds_t *sourceLocation_file, flb_sds_t *sourceL
     msgpack_pack_str_body(mp_pck,"file", 4);
     msgpack_pack_str(mp_pck, flb_sds_len(*sourceLocation_file));
     msgpack_pack_str_body(mp_pck,*sourceLocation_file, flb_sds_len(*sourceLocation_file));
+
     msgpack_pack_str(mp_pck, 4);
     msgpack_pack_str_body(mp_pck,"line", 4);
-    msgpack_pack_str(mp_pck, flb_sds_len(*sourceLocation_line));
-    msgpack_pack_str_body(mp_pck,*sourceLocation_line, flb_sds_len(*sourceLocation_line));
+    msgpack_pack_int64(mp_pck, *sourceLocation_line);
+
     msgpack_pack_str(mp_pck, 8);
     msgpack_pack_str_body(mp_pck,"function", 8);
     msgpack_pack_str(mp_pck, flb_sds_len(*sourceLocation_function));
@@ -46,7 +47,7 @@ void add_sourceLocation_field(flb_sds_t *sourceLocation_file, flb_sds_t *sourceL
 }
 
 /* Return true if sourceLocation extracted */
-bool extract_sourceLocation(flb_sds_t *sourceLocation_file, flb_sds_t *sourceLocation_line, 
+bool extract_sourceLocation(flb_sds_t *sourceLocation_file, int64_t *sourceLocation_line, 
                                 flb_sds_t *sourceLocation_function, msgpack_object *obj)
 {
     sourceLocation_status srcLoc_status = NO_SOURCELOCATION;
@@ -76,8 +77,12 @@ bool extract_sourceLocation(flb_sds_t *sourceLocation_file, flb_sds_t *sourceLoc
                     if (strcmp(sub_field_name, "file") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
                         *sourceLocation_file = flb_sds_copy(*sourceLocation_file, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                     }
-                    else if (strcmp(sub_field_name, "line") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
-                        *sourceLocation_line = flb_sds_copy(*sourceLocation_line, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
+                    else if (strcmp(sub_field_name, "line") == 0 && tmp_p->val.type == MSGPACK_OBJECT_POSITIVE_INTEGER) {
+                        /* printf("get line\n");
+                        fflush(stdout);
+                        printf("line: %d\n", tmp_p->val.via.i64);
+                        fflush(stdout); */
+                        *sourceLocation_line = tmp_p->val.via.i64;
                     }
                     else if (strcmp(sub_field_name, "function") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
                         *sourceLocation_function = flb_sds_copy(*sourceLocation_function, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
