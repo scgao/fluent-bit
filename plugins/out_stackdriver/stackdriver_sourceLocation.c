@@ -77,12 +77,17 @@ bool extract_sourceLocation(flb_sds_t *sourceLocation_file, int64_t *sourceLocat
                     if (strcmp(sub_field_name, "file") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
                         *sourceLocation_file = flb_sds_copy(*sourceLocation_file, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                     }
-                    else if (strcmp(sub_field_name, "line") == 0 && tmp_p->val.type == MSGPACK_OBJECT_POSITIVE_INTEGER) {
-                        /* printf("get line\n");
-                        fflush(stdout);
-                        printf("line: %d\n", tmp_p->val.via.i64);
-                        fflush(stdout); */
-                        *sourceLocation_line = tmp_p->val.via.i64;
+                    else if (strcmp(sub_field_name, "line") == 0) {
+                        if (tmp_p->val.type == MSGPACK_OBJECT_POSITIVE_INTEGER) {
+                            /* printf("get line\n");
+                            fflush(stdout);
+                            printf("line: %d\n", tmp_p->val.via.i64);
+                            fflush(stdout); */
+                            *sourceLocation_line = tmp_p->val.via.i64;
+                        }
+                        else if (tmp_p->val.type == MSGPACK_OBJECT_STR) {
+                            *sourceLocation_line = atoi(tmp_p->val.via.str.ptr);
+                        }
                     }
                     else if (strcmp(sub_field_name, "function") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
                         *sourceLocation_function = flb_sds_copy(*sourceLocation_function, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
