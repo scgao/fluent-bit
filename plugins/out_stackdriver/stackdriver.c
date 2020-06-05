@@ -635,7 +635,7 @@ static int stackdriver_format(const void *data, size_t bytes,
 
         /* Extract sourceLocation */
         sourceLocation_file = flb_sds_create("");
-        sourceLocation_line = flb_sds_create("");
+        sourceLocation_line = flb_sds_create("0");
         sourceLocation_function = flb_sds_create("");
         sourceLocation_extracted = extract_sourceLocation(&sourceLocation_file, &sourceLocation_line,
                               &sourceLocation_function, obj);

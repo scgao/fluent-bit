@@ -55,7 +55,7 @@ bool extract_sourceLocation(flb_sds_t *sourceLocation_file, flb_sds_t *sourceLoc
         msgpack_object_kv* p = obj->via.map.ptr;
         msgpack_object_kv* const pend = obj->via.map.ptr + obj->via.map.size;
 
-        for (; p < pend && op_status == NO_SOURCELOCATION; ++p) {
+        for (; p < pend && srcLoc_status == NO_SOURCELOCATION; ++p) {
             if (p->key.type == MSGPACK_OBJECT_STR && p->val.type == MSGPACK_OBJECT_MAP) {
                 flb_sds_t field_name = flb_sds_create_len(p->key.via.str.ptr, p->key.via.str.size);
                 
@@ -64,9 +64,7 @@ bool extract_sourceLocation(flb_sds_t *sourceLocation_file, flb_sds_t *sourceLoc
                     continue;
                 }
                 flb_sds_destroy(field_name);
-
                 msgpack_object sub_field = p->val;
-                
                 srcLoc_status = SOURCELOCATION_EXISTED;
         
                 msgpack_object_kv* tmp_p = sub_field.via.map.ptr;
@@ -95,5 +93,5 @@ bool extract_sourceLocation(flb_sds_t *sourceLocation_file, flb_sds_t *sourceLoc
         }
     }
     
-    return srcLoc_status == SOURCELOCATION_EXISTED
+    return srcLoc_status == SOURCELOCATION_EXISTED;
 }
