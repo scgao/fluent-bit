@@ -599,8 +599,11 @@ static int stackdriver_format(const void *data, size_t bytes,
         if (operation_extracted) {
             add_operation_field(&operation_id, &operation_producer,
                                 &operation_first, &operation_last, &mp_pck);
-            
         }
+        
+        /* Clean up id and producer if operation extracted */
+        flb_sds_destroy(operation_id);
+        flb_sds_destroy(operation_producer);
 
         /* jsonPayload */
         msgpack_pack_str(&mp_pck, 11);
@@ -630,10 +633,6 @@ static int stackdriver_format(const void *data, size_t bytes,
 
         msgpack_pack_str(&mp_pck, s);
         msgpack_pack_str_body(&mp_pck, time_formatted, s);
-
-        /* Clean up id and producer */
-        flb_sds_destroy(operation_id);
-        flb_sds_destroy(operation_producer);
     }
 
     /* Convert from msgpack to JSON */
