@@ -490,7 +490,7 @@ static int stackdriver_format(const void *data, size_t bytes,
 {
     int len;
     int array_size = 0;
-    /* The defaulf value is 3: timestamp, jsonPayload, logName. When the operation exists, entry_size will increase by 1*/
+    /* The defaulf value is 3: timestamp, jsonPayload, logName. When the operation exists, entry_size will increase by 1 */
     int entry_size = 3; 
     int special_fields_size = 0;
 
@@ -645,6 +645,11 @@ static int stackdriver_format(const void *data, size_t bytes,
             add_operation_field(&operation_id, &operation_producer,
                                 &operation_first, &operation_last, &mp_pck);
         }
+        
+        /* Clean up special fields */
+        flb_sds_destroy(insertId);
+        flb_sds_destroy(operation_id);
+        flb_sds_destroy(operation_producer);
 
         /* jsonPayload */
         msgpack_pack_str(&mp_pck, 11);
@@ -674,11 +679,6 @@ static int stackdriver_format(const void *data, size_t bytes,
 
         msgpack_pack_str(&mp_pck, s);
         msgpack_pack_str_body(&mp_pck, time_formatted, s);
-
-        /* Clean up special fields */
-        flb_sds_destroy(insertId);
-        flb_sds_destroy(operation_id);
-        flb_sds_destroy(operation_producer);
     }
 
     /* Convert from msgpack to JSON */
