@@ -25,7 +25,7 @@ typedef enum {
 
 
 void add_operation_field(flb_sds_t *operation_id, flb_sds_t *operation_producer, 
-                         bool *operation_first, bool *operation_last, 
+                         int *operation_first, int *operation_last, 
                          msgpack_packer *mp_pck)
 {    
     msgpack_pack_str(mp_pck, 9);
@@ -41,7 +41,7 @@ void add_operation_field(flb_sds_t *operation_id, flb_sds_t *operation_producer,
     msgpack_pack_str_body(mp_pck, *operation_producer, flb_sds_len(*operation_producer));
     msgpack_pack_str(mp_pck, 5);
     msgpack_pack_str_body(mp_pck, "first", 5);
-    if (*operation_first == true) {
+    if (*operation_first == FLB_TRUE) {
         msgpack_pack_true(mp_pck);
     }
     else {
@@ -50,7 +50,7 @@ void add_operation_field(flb_sds_t *operation_id, flb_sds_t *operation_producer,
     
     msgpack_pack_str(mp_pck, 4);
     msgpack_pack_str_body(mp_pck, "last", 4);
-    if (*operation_last == true) {
+    if (*operation_last == FLB_TRUE) {
         msgpack_pack_true(mp_pck);
     }
     else {
@@ -59,8 +59,8 @@ void add_operation_field(flb_sds_t *operation_id, flb_sds_t *operation_producer,
 }
 
 /* Return true if operation extracted */
-bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer, 
-                       bool *operation_first, bool *operation_last, 
+int extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer, 
+                       int *operation_first, int *operation_last, 
                        msgpack_object *obj, int *extra_subfields)
 {
     operation_status op_status = NO_OPERATION;
@@ -85,28 +85,32 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
                         continue;
                     }
                     if (strncmp("id", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_STR) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_STR) {
                             continue;
                         }
                         *operation_id = flb_sds_copy(*operation_id, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                     }
                     else if (strncmp("producer", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_STR) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_STR) {
                             continue;
                         }
                         *operation_producer = flb_sds_copy(*operation_producer, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                     }
                     else if (strncmp("first", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_BOOLEAN) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_BOOLEAN) {
                             continue;
                         }
-                        *operation_first = tmp_p->val.via.boolean;
+                        if (tmp_p->val.via.boolean) {
+                            *operation_first = FLB_TRUE;
+                        }
                     }
                     else if (strncmp("last", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_BOOLEAN) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_BOOLEAN) {
                             continue;
                         }
-                        *operation_last = tmp_p->val.via.boolean;
+                        if (tmp_p->val.via.boolean) {
+                            *operation_last = FLB_TRUE;
+                        }
                     }
                     else {
                         /* extra sub-fields */ 
@@ -128,7 +132,7 @@ void pack_extra_operation_subfields(msgpack_packer *mp_pck, msgpack_object *oper
     msgpack_pack_map(mp_pck, extra_subfields);
 
     for (; p < pend; ++p) {
-        if(strncmp("id", p->key.via.str.ptr, p->key.via.str.size) != 0 
+        if (strncmp("id", p->key.via.str.ptr, p->key.via.str.size) != 0 
             && strncmp("producer", p->key.via.str.ptr, p->key.via.str.size) != 0
             && strncmp("first", p->key.via.str.ptr, p->key.via.str.size) != 0
             && strncmp("last", p->key.via.str.ptr, p->key.via.str.size) != 0) {
