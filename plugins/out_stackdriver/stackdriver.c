@@ -480,7 +480,7 @@ static int stackdriver_format(const void *data, size_t bytes,
     msgpack_packer mp_pck;
     flb_sds_t out_buf;
 
-    /* Parameters in Operation*/
+    /* Parameters in Operation */
     flb_sds_t operation_id;
     flb_sds_t operation_producer;
     bool operation_first = false;
