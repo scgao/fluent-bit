@@ -465,7 +465,7 @@ static int stackdriver_format(const void *data, size_t bytes,
 {
     int len;
     int array_size = 0;
-    /* The defaulf value is 3: timestamp, jsonPayload, logName. When the operation exists, entry_size will increase by 1 */
+    /* The default value is 3: timestamp, jsonPayload, logName. */
     int entry_size = 3; 
     size_t s;
     size_t off = 0;
