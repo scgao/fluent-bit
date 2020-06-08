@@ -448,9 +448,8 @@ static void pack_json_payload(bool operation_extracted, msgpack_packer* mp_pck,
                                 msgpack_object *obj)
 {
     /* Specified fields include operation, sourceLocation ... */
-    /* TODO: deal with other fields later */
 
-    if (operation_extracted == true) {
+    if (operation_extracted) {
         pack_object_except_operation(mp_pck, obj);
     }
     else {
@@ -473,12 +472,15 @@ static int stackdriver_format(const void *data, size_t bytes,
     char time_formatted[255];
     struct tm tm;
     struct flb_time tms;
-    severity_t severity;
     msgpack_object *obj;
     msgpack_unpacked result;
     msgpack_sbuffer mp_sbuf;
     msgpack_packer mp_pck;
     flb_sds_t out_buf;
+
+    /* Parameters for severity */
+    severity_t severity;
+    bool severity_extracted = false;
 
     /* Parameters in Operation */
     flb_sds_t operation_id;
@@ -572,6 +574,13 @@ static int stackdriver_format(const void *data, size_t bytes,
          * }
          */
         
+        /* Extract severity */
+         if (ctx->severity_key
+            && get_severity_level(&severity, obj, ctx->severity_key) == 0) {
+            severity_extracted = true;
+            entry_size += 1;
+        }
+
         /*  Parse jsonPayload and extract operation first */
         operation_id = flb_sds_create("");
         operation_producer = flb_sds_create("");
@@ -582,17 +591,12 @@ static int stackdriver_format(const void *data, size_t bytes,
             entry_size += 1;
         }
 
-        if (ctx->severity_key
-            && get_severity_level(&severity, obj, ctx->severity_key) == 0) {
-            /* additional field for severity */
-            entry_size += 1;
-            msgpack_pack_map(&mp_pck, entry_size);
+        msgpack_pack_map(&mp_pck, entry_size);
+        
+        if (severity_extracted) {
             msgpack_pack_str(&mp_pck, 8);
             msgpack_pack_str_body(&mp_pck, "severity", 8);
             msgpack_pack_int(&mp_pck, severity);
-        }
-        else {
-            msgpack_pack_map(&mp_pck, entry_size);
         }
 
         /* Add operation field into the log entry */
