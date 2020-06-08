@@ -496,17 +496,15 @@ static int stackdriver_format(const void *data, size_t bytes,
 {
     int len;
     int array_size = 0;
-    /* The defaulf value is 3: timestamp, jsonPayload, logName. When the operation exists, entry_size will increase by 1 */
+    /* The default value is 3: timestamp, jsonPayload, logName. */
     int entry_size = 3; 
     int special_fields_size = 0;
-
     size_t s;
     size_t off = 0;
     char path[PATH_MAX];
     char time_formatted[255];
     struct tm tm;
     struct flb_time tms;
-    severity_t severity;
     msgpack_object *obj;
     msgpack_unpacked result;
     msgpack_sbuffer mp_sbuf;
@@ -517,7 +515,11 @@ static int stackdriver_format(const void *data, size_t bytes,
 	flb_sds_t insertId;
     bool insertId_extracted = false;
 
-    /* Parameters for Operation */
+    /* Parameters for severity */
+    severity_t severity;
+    bool severity_extracted = false;
+
+    /* Parameters in Operation */
     flb_sds_t operation_id;
     flb_sds_t operation_producer;
     bool operation_first = false;
@@ -614,6 +616,13 @@ static int stackdriver_format(const void *data, size_t bytes,
          * }
          */
         
+        /* Extract severity */
+        if (ctx->severity_key
+            && get_severity_level(&severity, obj, ctx->severity_key) == 0) {
+            severity_extracted = true;
+            entry_size += 1;
+        }
+
         /* Parse jsonPayload and extract special fields */
         /* Extract insertId */
         insertId = flb_sds_create("");
@@ -644,17 +653,12 @@ static int stackdriver_format(const void *data, size_t bytes,
         }
 
         entry_size += special_fields_size;
-        if (ctx->severity_key
-            && get_severity_level(&severity, obj, ctx->severity_key) == 0) {
-            /* additional field for severity */
-            entry_size += 1;
-            msgpack_pack_map(&mp_pck, entry_size);
+        msgpack_pack_map(&mp_pck, entry_size);
+        
+        if (severity_extracted) {
             msgpack_pack_str(&mp_pck, 8);
             msgpack_pack_str_body(&mp_pck, "severity", 8);
             msgpack_pack_int(&mp_pck, severity);
-        }
-        else {
-            msgpack_pack_map(&mp_pck, entry_size);
         }
 
         /* Add insertId field into the log entry */
