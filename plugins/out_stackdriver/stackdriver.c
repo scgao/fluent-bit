@@ -520,10 +520,7 @@ static int stackdriver_format(const void *data, size_t bytes,
     bool severity_extracted = false;
 
     /* Parameters in Operation */
-    flb_sds_t operation_id;
-    flb_sds_t operation_producer;
-    bool operation_first = false;
-    bool operation_last = false;
+    msgpack_object operation_obj;
     bool operation_extracted = false;
 
     /* Parameters for sourceLocation */
@@ -623,21 +620,8 @@ static int stackdriver_format(const void *data, size_t bytes,
             entry_size += 1;
         }
 
-        /* Parse jsonPayload and extract special fields */
-        /* Extract insertId */
-        insertId = flb_sds_create("");
-        insertId_extracted = extract_insertId(&insertId, obj);
-
-        if (insertId_extracted) {
-            special_fields_size += 1;
-        }
-
-        /* Extract operation */
-        operation_id = flb_sds_create("");
-        operation_producer = flb_sds_create("");
-        operation_extracted = extract_operation(&operation_id, &operation_producer,
-                              &operation_first, &operation_last, obj);
-        
+        /*  extract operation */
+        operation_extracted = extract_operation(&operation_obj, obj); 
         if (operation_extracted) {
             special_fields_size += 1;
         }
@@ -668,8 +652,9 @@ static int stackdriver_format(const void *data, size_t bytes,
 
         /* Add operation field into the log entry */
         if (operation_extracted) {
-            add_operation_field(&operation_id, &operation_producer,
-                                &operation_first, &operation_last, &mp_pck);
+            msgpack_pack_str(&mp_pck, 9);
+            msgpack_pack_str_body(&mp_pck, "operation", 9);
+            msgpack_pack_object(&mp_pck, operation_obj);
         }
 
         /* Add sourceLocation field into the log entry */
@@ -680,8 +665,6 @@ static int stackdriver_format(const void *data, size_t bytes,
         
         /* Clean up special fields */
         flb_sds_destroy(insertId);
-        flb_sds_destroy(operation_id);
-        flb_sds_destroy(operation_producer);
         flb_sds_destroy(sourceLocation_file);
         flb_sds_destroy(sourceLocation_function);
 

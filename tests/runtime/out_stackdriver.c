@@ -50,7 +50,7 @@ void empty_payload(void) {
 
     out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
     TEST_CHECK(out_ffd >= 0);
-    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "gce_instance", NULL);
+    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "global", NULL);
 
     ret = flb_start(ctx);
     TEST_CHECK(ret == 0);
@@ -79,7 +79,7 @@ void empty_payload_with_valid_operation(void) {
 
     out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
     TEST_CHECK(out_ffd >= 0);
-    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "gce_instance", NULL);
+    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "global", NULL);
 
     ret = flb_start(ctx);
     TEST_CHECK(ret == 0);
@@ -108,7 +108,7 @@ void common_payload_without_operation(void) {
 
     out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
     TEST_CHECK(out_ffd >= 0);
-    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "gce_instance", NULL);
+    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "global", NULL);
 
     ret = flb_start(ctx);
     TEST_CHECK(ret == 0);
@@ -137,7 +137,7 @@ void common_payload_with_valid_operation(void) {
 
     out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
     TEST_CHECK(out_ffd >= 0);
-    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "gce_instance", NULL);
+    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "global", NULL);
 
     ret = flb_start(ctx);
     TEST_CHECK(ret == 0);
@@ -166,7 +166,7 @@ void long_payload_with_valid_operation(void) {
 
     out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
     TEST_CHECK(out_ffd >= 0);
-    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "gce_instance", NULL);
+    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "global", NULL);
 
     ret = flb_start(ctx);
     TEST_CHECK(ret == 0);
@@ -195,7 +195,7 @@ void incorrect_type_of_operation(void) {
 
     out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
     TEST_CHECK(out_ffd >= 0);
-    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "gce_instance", NULL);
+    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "global", NULL);
 
     ret = flb_start(ctx);
     TEST_CHECK(ret == 0);
@@ -224,7 +224,7 @@ void missing_id(void) {
 
     out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
     TEST_CHECK(out_ffd >= 0);
-    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "gce_instance", NULL);
+    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "global", NULL);
 
     ret = flb_start(ctx);
     TEST_CHECK(ret == 0);
@@ -253,7 +253,7 @@ void missing_producer(void) {
 
     out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
     TEST_CHECK(out_ffd >= 0);
-    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "gce_instance", NULL);
+    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "global", NULL);
 
     ret = flb_start(ctx);
     TEST_CHECK(ret == 0);
@@ -282,7 +282,7 @@ void incorrect_type_of_id(void) {
 
     out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
     TEST_CHECK(out_ffd >= 0);
-    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "gce_instance", NULL);
+    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "global", NULL);
 
     ret = flb_start(ctx);
     TEST_CHECK(ret == 0);
@@ -311,7 +311,7 @@ void incorrect_type_of_first(void) {
 
     out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
     TEST_CHECK(out_ffd >= 0);
-    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "gce_instance", NULL);
+    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "global", NULL);
 
     ret = flb_start(ctx);
     TEST_CHECK(ret == 0);
@@ -340,7 +340,7 @@ void extra_sub_field(void) {
 
     out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
     TEST_CHECK(out_ffd >= 0);
-    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "gce_instance", NULL);
+    flb_output_set(ctx, out_ffd, "Match", "*", "resource", "global", NULL);
 
     ret = flb_start(ctx);
     TEST_CHECK(ret == 0);
