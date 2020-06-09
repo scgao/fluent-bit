@@ -67,13 +67,13 @@ bool extract_sourceLocation(flb_sds_t *sourceLocation_file, int64_t *sourceLocat
                 msgpack_object_kv* const tmp_pend = sub_field.via.map.ptr + sub_field.via.map.size;
 
                 for (; tmp_p < tmp_pend; ++tmp_p) {
-                    if (strncmp("file", p->key.via.str.ptr, p->key.via.str.size) == 0 
+                    if (strncmp("file", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0 
                         && tmp_p->val.type == MSGPACK_OBJECT_STR) {
 
                         *sourceLocation_file = flb_sds_copy(*sourceLocation_file, 
                                                             tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                     }
-                    else if (strncmp("line", p->key.via.str.ptr, p->key.via.str.size) == 0) {
+                    else if (strncmp("line", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
                         if (tmp_p->val.type == MSGPACK_OBJECT_POSITIVE_INTEGER) {
                             *sourceLocation_line = tmp_p->val.via.i64;
                         }
@@ -84,7 +84,7 @@ bool extract_sourceLocation(flb_sds_t *sourceLocation_file, int64_t *sourceLocat
                             return false;
                         }
                     }
-                    else if (strncmp("function", p->key.via.str.ptr, p->key.via.str.size) == 0 
+                    else if (strncmp("function", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0 
                              && tmp_p->val.type == MSGPACK_OBJECT_STR) {
                         *sourceLocation_function = flb_sds_copy(*sourceLocation_function, 
                                                                 tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);

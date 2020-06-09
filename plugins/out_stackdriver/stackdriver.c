@@ -622,8 +622,8 @@ static int stackdriver_format(const void *data, size_t bytes,
         
         /* Extract insertId */
         insertId = flb_sds_create("");
-        insertId_extracted = extract_insertId(insertId, obj);
-        if (operation_extracted) {
+        insertId_extracted = extract_insertId(&insertId, obj);
+        if (insertId_extracted) {
             special_fields_size += 1;
         }
 
