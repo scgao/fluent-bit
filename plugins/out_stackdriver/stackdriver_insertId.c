@@ -30,23 +30,18 @@ bool extract_insertId(flb_sds_t *insertId, msgpack_object *obj) {
     bool insertId_existed = false;
 
     if (obj->via.map.size != 0) {
-        flb_sds_t field_name = flb_sds_create("");
-    	
         msgpack_object_kv* p = obj->via.map.ptr;
         msgpack_object_kv* const pend = obj->via.map.ptr + obj->via.map.size;
 
         for (; p < pend; ++p) {
-            if (p->key.type == MSGPACK_OBJECT_STR && p->val.type == MSGPACK_OBJECT_STR) {
-                field_name = flb_sds_copy(field_name, p->key.via.str.ptr, p->key.via.str.size);
+            if (p->val.type == MSGPACK_OBJECT_STR 
+                && strncmp("insertId", p->key.via.str.ptr, p->key.via.str.size) == 0) {
                 
-                if (strcmp(field_name, "insertId") == 0) {
-                	*insertId = flb_sds_copy(*insertId, p->val.via.str.ptr, p->val.via.str.size);
-                    insertId_existed = true;
-                    break;
-                }
+                *insertId = flb_sds_copy(*insertId, p->val.via.str.ptr, p->val.via.str.size);
+                insertId_existed = true;
+                break;
             }
         }
-        flb_sds_destroy(field_name); 
     }
     
     /* Invalid if insertId is empty */
