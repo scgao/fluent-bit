@@ -448,7 +448,6 @@ static void pack_json_payload(bool operation_extracted, msgpack_packer* mp_pck,
                                 msgpack_object *obj)
 {
     /* Specified fields include operation, sourceLocation ... */
-
     if (operation_extracted) {
         pack_object_except_operation(mp_pck, obj);
     }
@@ -483,10 +482,7 @@ static int stackdriver_format(const void *data, size_t bytes,
     bool severity_extracted = false;
 
     /* Parameters in Operation */
-    flb_sds_t operation_id;
-    flb_sds_t operation_producer;
-    bool operation_first = false;
-    bool operation_last = false;
+    msgpack_object operation_obj;
     bool operation_extracted = false;
 
 
@@ -581,12 +577,8 @@ static int stackdriver_format(const void *data, size_t bytes,
             entry_size += 1;
         }
 
-        /*  Parse jsonPayload and extract operation first */
-        operation_id = flb_sds_create("");
-        operation_producer = flb_sds_create("");
-        operation_extracted = extract_operation(&operation_id, &operation_producer,
-                              &operation_first, &operation_last, obj);
-        
+        /*  extract operation */
+        operation_extracted = extract_operation(&operation_obj, obj); 
         if (operation_extracted) {
             entry_size += 1;
         }
@@ -601,13 +593,10 @@ static int stackdriver_format(const void *data, size_t bytes,
 
         /* Add operation field into the log entry */
         if (operation_extracted) {
-            add_operation_field(&operation_id, &operation_producer,
-                                &operation_first, &operation_last, &mp_pck);
+            msgpack_pack_str(&mp_pck, 9);
+            msgpack_pack_str_body(&mp_pck, "operation", 9);
+            msgpack_pack_object(&mp_pck, operation_obj);
         }
-        
-        /* Clean up id and producer if operation extracted */
-        flb_sds_destroy(operation_id);
-        flb_sds_destroy(operation_producer);
 
         /* jsonPayload */
         msgpack_pack_str(&mp_pck, 11);
