@@ -511,13 +511,13 @@ static int stackdriver_format(const void *data, size_t bytes,
     msgpack_packer mp_pck;
     flb_sds_t out_buf;
 
-    /* Parameters for insertId */
-	flb_sds_t insertId;
-    bool insertId_extracted = false;
-
     /* Parameters for severity */
     severity_t severity;
     bool severity_extracted = false;
+
+    /* Parameters for insertId */
+	flb_sds_t insertId;
+    bool insertId_extracted = false;
 
     /* Parameters in Operation */
     msgpack_object operation_obj;
@@ -619,8 +619,15 @@ static int stackdriver_format(const void *data, size_t bytes,
             severity_extracted = true;
             entry_size += 1;
         }
+        
+        /* Extract insertId */
+        insertId = flb_sds_create("");
+        insertId_extracted = extract_insertId(insertId, obj);
+        if (operation_extracted) {
+            special_fields_size += 1;
+        }
 
-        /*  extract operation */
+        /* Extract operation */
         operation_extracted = extract_operation(&operation_obj, obj); 
         if (operation_extracted) {
             special_fields_size += 1;

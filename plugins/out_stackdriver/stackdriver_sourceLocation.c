@@ -57,14 +57,9 @@ bool extract_sourceLocation(flb_sds_t *sourceLocation_file, int64_t *sourceLocat
         msgpack_object_kv* const pend = obj->via.map.ptr + obj->via.map.size;
 
         for (; p < pend && srcLoc_status == NO_SOURCELOCATION; ++p) {
-            if (p->key.type == MSGPACK_OBJECT_STR && p->val.type == MSGPACK_OBJECT_MAP) {
-                flb_sds_t field_name = flb_sds_create_len(p->key.via.str.ptr, p->key.via.str.size);
-                
-                if (strcmp(field_name, SOURCELOCATION_IN_JSON) != 0) {
-                    flb_sds_destroy(field_name);
-                    continue;
-                }
-                flb_sds_destroy(field_name);
+            if (p->val.type == MSGPACK_OBJECT_MAP 
+                && strncmp(SOURCELOCATION_IN_JSON, p->key.via.str.ptr, p->key.via.str.size) == 0) {
+
                 msgpack_object sub_field = p->val;
                 srcLoc_status = SOURCELOCATION_EXISTED;
         
@@ -72,33 +67,34 @@ bool extract_sourceLocation(flb_sds_t *sourceLocation_file, int64_t *sourceLocat
                 msgpack_object_kv* const tmp_pend = sub_field.via.map.ptr + sub_field.via.map.size;
 
                 for (; tmp_p < tmp_pend; ++tmp_p) {
-                    flb_sds_t sub_field_name = flb_sds_create_len(tmp_p->key.via.str.ptr, tmp_p->key.via.str.size);
+                    if (strncmp("file", p->key.via.str.ptr, p->key.via.str.size) == 0 
+                        && tmp_p->val.type == MSGPACK_OBJECT_STR) {
 
-                    if (strcmp(sub_field_name, "file") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
-                        *sourceLocation_file = flb_sds_copy(*sourceLocation_file, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
+                        *sourceLocation_file = flb_sds_copy(*sourceLocation_file, 
+                                                            tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                     }
-                    else if (strcmp(sub_field_name, "line") == 0) {
+                    else if (strncmp("line", p->key.via.str.ptr, p->key.via.str.size) == 0) {
                         if (tmp_p->val.type == MSGPACK_OBJECT_POSITIVE_INTEGER) {
-                            /* printf("get line\n");
-                            fflush(stdout);
-                            printf("line: %d\n", tmp_p->val.via.i64);
-                            fflush(stdout); */
                             *sourceLocation_line = tmp_p->val.via.i64;
                         }
                         else if (tmp_p->val.type == MSGPACK_OBJECT_STR) {
                             *sourceLocation_line = atoi(tmp_p->val.via.str.ptr);
                         }
+                        else {
+                            return false;
+                        }
                     }
-                    else if (strcmp(sub_field_name, "function") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
-                        *sourceLocation_function = flb_sds_copy(*sourceLocation_function, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
+                    else if (strncmp("function", p->key.via.str.ptr, p->key.via.str.size) == 0 
+                             && tmp_p->val.type == MSGPACK_OBJECT_STR) {
+                        *sourceLocation_function = flb_sds_copy(*sourceLocation_function, 
+                                                                tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                     }
                     else {
                         /* extra sub-fields or incorrect type of sub-fields */ 
-                        flb_sds_destroy(sub_field_name);
                         return false;
                     }
-                    flb_sds_destroy(sub_field_name);
                 }
+                break;
             }
         }
     }
