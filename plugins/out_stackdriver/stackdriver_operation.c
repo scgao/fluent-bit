@@ -67,7 +67,6 @@ bool extract_operation(msgpack_object *operation, msgpack_object *obj)
         }
     }
     
-    /* Invalid if id/producer is empty */
     return op_status == OPERATION_EXISTED;
 }
 
