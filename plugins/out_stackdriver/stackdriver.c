@@ -516,7 +516,8 @@ static int stackdriver_format(const void *data, size_t bytes,
     bool severity_extracted = false;
 
     /* Parameters for insertId */
-	flb_sds_t insertId;
+    msgpack_object insertId_obj;
+    flb_sds_t insertId_key;
     bool insertId_extracted = false;
 
     /* Parameters in Operation */
@@ -621,11 +622,12 @@ static int stackdriver_format(const void *data, size_t bytes,
         }
         
         /* Extract insertId */
-        insertId = flb_sds_create("");
-        insertId_extracted = extract_insertId(&insertId, obj);
-        if (insertId_extracted) {
+        insertId_key = flb_sds_create("insertId"); 
+        if (get_msgpack_obj(&insertId_obj, obj, insertId_key, flb_sds_len(insertId_key), MSGPACK_OBJECT_STR) == 0) {
+            insertId_extracted = true;
             special_fields_size += 1;
         }
+        flb_sds_destroy(insertId_key);
 
         /* Extract operation */
         operation_extracted = extract_operation(&operation_obj, obj); 
@@ -654,7 +656,9 @@ static int stackdriver_format(const void *data, size_t bytes,
 
         /* Add insertId field into the log entry */
         if (insertId_extracted) {
-            add_insertId_field(&insertId, &mp_pck);
+            msgpack_pack_str(&mp_pck, 8);
+            msgpack_pack_str_body(&mp_pck, "insertId", 8);
+            msgpack_pack_object(&mp_pck, insertId_obj);
         }
 
         /* Add operation field into the log entry */
@@ -671,7 +675,6 @@ static int stackdriver_format(const void *data, size_t bytes,
         }
         
         /* Clean up special fields */
-        flb_sds_destroy(insertId);
         flb_sds_destroy(sourceLocation_file);
         flb_sds_destroy(sourceLocation_function);
 
