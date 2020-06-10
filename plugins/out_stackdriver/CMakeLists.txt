@@ -3,7 +3,6 @@ set(src
   stackdriver_conf.c
   stackdriver.c
   stackdriver_operation.c
-  stackdriver_insertId.c
   stackdriver_sourceLocation.c
   )
 
