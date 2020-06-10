@@ -524,9 +524,7 @@ static int stackdriver_format(const void *data, size_t bytes,
     bool operation_extracted = false;
 
     /* Parameters for sourceLocation */
-    flb_sds_t sourceLocation_file;
-    int64_t sourceLocation_line = 0;
-    flb_sds_t sourceLocation_function;
+    msgpack_object sourceLocation_obj;
     bool sourceLocation_extracted = false;
 
     /* Count number of records */
@@ -635,11 +633,7 @@ static int stackdriver_format(const void *data, size_t bytes,
         }
 
         /* Extract sourceLocation */
-        sourceLocation_file = flb_sds_create("");
-        sourceLocation_function = flb_sds_create("");
-        sourceLocation_extracted = extract_sourceLocation(&sourceLocation_file, &sourceLocation_line,
-                              &sourceLocation_function, obj);
-        
+        sourceLocation_extracted = extract_sourceLocation(&sourceLocation_obj, obj);
         if (sourceLocation_extracted) {
             special_fields_size += 1;
         }
@@ -669,13 +663,12 @@ static int stackdriver_format(const void *data, size_t bytes,
 
         /* Add sourceLocation field into the log entry */
         if (sourceLocation_extracted) {
-            add_sourceLocation_field(&sourceLocation_file, &sourceLocation_line, 
-                                &sourceLocation_function, &mp_pck);
+            /*add_sourceLocation_field(&sourceLocation_file, &sourceLocation_line, 
+                                &sourceLocation_function, &mp_pck);*/
+            msgpack_pack_str(&mp_pck, 14);
+            msgpack_pack_str_body(&mp_pck, "sourceLocation", 14);
+            msgpack_pack_object(&mp_pck, sourceLocation_obj);
         }
-        
-        /* Clean up special fields */
-        flb_sds_destroy(sourceLocation_file);
-        flb_sds_destroy(sourceLocation_function);
 
         /* jsonPayload */
         msgpack_pack_str(&mp_pck, 11);

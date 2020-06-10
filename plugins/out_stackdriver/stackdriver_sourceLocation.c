@@ -23,32 +23,19 @@ typedef enum {
     SOURCELOCATION_EXISTED = 2
 } sourceLocation_status;
 
+static bool isInteger(char *s, int64_t size) {
+    int i = 0;
 
-void add_sourceLocation_field(flb_sds_t *sourceLocation_file, int64_t *sourceLocation_line, 
-                                flb_sds_t *sourceLocation_function, msgpack_packer *mp_pck)
-{    
-    msgpack_pack_str(mp_pck, 14);
-    msgpack_pack_str_body(mp_pck, "sourceLocation", 14);
-    msgpack_pack_map(mp_pck, 3);
-
-    msgpack_pack_str(mp_pck, 4);
-    msgpack_pack_str_body(mp_pck,"file", 4);
-    msgpack_pack_str(mp_pck, flb_sds_len(*sourceLocation_file));
-    msgpack_pack_str_body(mp_pck,*sourceLocation_file, flb_sds_len(*sourceLocation_file));
-
-    msgpack_pack_str(mp_pck, 4);
-    msgpack_pack_str_body(mp_pck,"line", 4);
-    msgpack_pack_int64(mp_pck, *sourceLocation_line);
-
-    msgpack_pack_str(mp_pck, 8);
-    msgpack_pack_str_body(mp_pck,"function", 8);
-    msgpack_pack_str(mp_pck, flb_sds_len(*sourceLocation_function));
-    msgpack_pack_str_body(mp_pck,*sourceLocation_function, flb_sds_len(*sourceLocation_function));
+    for(; i < size; ++ i) {
+        if(s[i] > '9' || s[i] < '0') {
+            return false;
+        }
+    }
+    return true;
 }
 
 /* Return true if sourceLocation extracted */
-bool extract_sourceLocation(flb_sds_t *sourceLocation_file, int64_t *sourceLocation_line, 
-                                flb_sds_t *sourceLocation_function, msgpack_object *obj)
+bool extract_sourceLocation(msgpack_object *sourceLocation_obj, msgpack_object *obj)
 {
     sourceLocation_status srcLoc_status = NO_SOURCELOCATION;
 
@@ -66,34 +53,30 @@ bool extract_sourceLocation(flb_sds_t *sourceLocation_file, int64_t *sourceLocat
                 msgpack_object_kv* tmp_p = sub_field.via.map.ptr;
                 msgpack_object_kv* const tmp_pend = sub_field.via.map.ptr + sub_field.via.map.size;
 
+                // validate the sourceLocation field
                 for (; tmp_p < tmp_pend; ++tmp_p) {
-                    if (strncmp("file", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0 
-                        && tmp_p->val.type == MSGPACK_OBJECT_STR) {
-
-                        *sourceLocation_file = flb_sds_copy(*sourceLocation_file, 
-                                                            tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
-                    }
-                    else if (strncmp("line", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if (tmp_p->val.type == MSGPACK_OBJECT_POSITIVE_INTEGER) {
-                            *sourceLocation_line = tmp_p->val.via.i64;
+                    if (tmp_p->val.type == MSGPACK_OBJECT_STR) {
+                        if (strncmp("file", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0
+                            || strncmp("function", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
+                            continue;
                         }
-                        else if (tmp_p->val.type == MSGPACK_OBJECT_STR) {
-                            *sourceLocation_line = atoi(tmp_p->val.via.str.ptr);
+                        else if (strncmp("line", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0 
+                                 && isInteger(tmp_p->val.via.str.ptr, tmp_p->val.via.str.size)) {
+                            continue;
                         }
                         else {
                             return false;
                         }
                     }
-                    else if (strncmp("function", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0 
-                             && tmp_p->val.type == MSGPACK_OBJECT_STR) {
-                        *sourceLocation_function = flb_sds_copy(*sourceLocation_function, 
-                                                                tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
+                    else if (strncmp("line", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0
+                             && tmp_p->val.type == MSGPACK_OBJECT_POSITIVE_INTEGER) {
+                        continue;
                     }
                     else {
-                        /* extra sub-fields or incorrect type of sub-fields */ 
                         return false;
                     }
                 }
+                *sourceLocation_obj = p->val;
                 break;
             }
         }

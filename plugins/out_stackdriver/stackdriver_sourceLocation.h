@@ -22,10 +22,6 @@
 
 #include "stackdriver.h"
 
-void add_sourceLocation_field(flb_sds_t *sourceLocation_file, int64_t *sourceLocation_line, 
-                                flb_sds_t *sourceLocation_function, msgpack_packer *mp_pck);
-
-bool extract_sourceLocation(flb_sds_t *sourceLocation_file, int64_t *sourceLocation_line, 
-                                flb_sds_t *sourceLocation_function, msgpack_object *obj);
+bool extract_sourceLocation(msgpack_object *sourceLocation_obj, msgpack_object *obj);
 
 #endif
