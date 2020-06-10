@@ -30,8 +30,7 @@
 #include "gce_metadata.h"
 #include "stackdriver.h"
 #include "stackdriver_conf.h"
-#include "stackdriver_operation.h"
-#include "stackdriver_sourceLocation.h"
+#include "stackdriver_special_fields.h"
 #include <mbedtls/base64.h>
 #include <mbedtls/sha256.h>
 

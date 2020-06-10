@@ -17,11 +17,12 @@
  */
 
 
-#ifndef FLB_STD_OPERATION_H
-#define FLB_STD_OPERATION_H
+#ifndef FLB_STD_SPECIAL_FIELDS_H
+#define FLB_STD_SPECIAL_FIELDS_H
 
 #include "stackdriver.h"
 
 bool extract_operation(msgpack_object *operation, msgpack_object *obj);
+bool extract_sourceLocation(msgpack_object *sourceLocation_obj, msgpack_object *obj);
 
 #endif

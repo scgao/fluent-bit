@@ -16,7 +16,59 @@
  *  limitations under the License.
  */
 #include "stackdriver.h"
-#include "stackdriver_sourceLocation.h"
+#include "stackdriver_special_fields.h"
+
+typedef enum {
+    NO_OPERATION = 1,
+    OPERATION_EXISTED = 2
+} operation_status;
+
+
+/* Return true if operation extracted */
+bool extract_operation(msgpack_object *operation, msgpack_object *obj)
+{
+    operation_status op_status = NO_OPERATION;
+
+    if (obj->via.map.size != 0) {    	
+        msgpack_object_kv* p = obj->via.map.ptr;
+        msgpack_object_kv* const pend = obj->via.map.ptr + obj->via.map.size;
+
+        for (; p < pend && op_status == NO_OPERATION; ++p) {
+            if (p->val.type == MSGPACK_OBJECT_MAP 
+                && strncmp(OPERATION_FIELD_IN_JSON, p->key.via.str.ptr, p->key.via.str.size) == 0) {
+
+                op_status = OPERATION_EXISTED;
+                msgpack_object sub_field = p->val;
+                
+                msgpack_object_kv* tmp_p = sub_field.via.map.ptr;
+                msgpack_object_kv* const tmp_pend = sub_field.via.map.ptr + sub_field.via.map.size;
+
+                /* Validate the operation field */
+                for (; tmp_p < tmp_pend; ++tmp_p) {
+                    if (tmp_p->val.type == MSGPACK_OBJECT_STR) {
+                        if (strncmp("id", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) != 0 
+                            && strncmp("producer", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) != 0) {
+                            return false;
+                        }
+                    }
+                    else if (tmp_p->val.type == MSGPACK_OBJECT_BOOLEAN) {
+                        if (strncmp("first", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) != 0 
+                            && strncmp("last", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) != 0) {
+                            return false;
+                        }
+                    }
+                    else {
+                        return false;
+                    }
+                }
+                *operation = p->val;
+                break;
+            }
+        }
+    }
+    
+    return op_status == OPERATION_EXISTED;
+}
 
 typedef enum {
     NO_SOURCELOCATION = 1,
@@ -84,3 +136,4 @@ bool extract_sourceLocation(msgpack_object *sourceLocation_obj, msgpack_object *
     
     return srcLoc_status == SOURCELOCATION_EXISTED;
 }
+
