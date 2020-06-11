@@ -46,8 +46,9 @@
 /* Default Resource type */
 #define FLB_SDS_RESOURCE_TYPE "global"
 
+/* Special fields key */
+#define INSERTID_IN_JSON "insertId"
 #define OPERATION_FIELD_IN_JSON "logging.googleapis.com/operation"
-
 #define SOURCELOCATION_IN_JSON "logging.googleapis.com/sourceLocation"
 
 struct flb_stackdriver {

@@ -461,7 +461,7 @@ static int pack_json_payload(bool insertId_extracted, bool operation_extracted, 
         for(; kv != kvend; ++kv) {
             cur_key = flb_sds_copy(cur_key, kv->key.via.str.ptr, kv->key.via.str.size);
 
-            if (insertId_extracted && strcmp(cur_key, "insertId") == 0 
+            if (insertId_extracted && strcmp(cur_key, INSERTID_IN_JSON) == 0 
             	&& kv->val.type == MSGPACK_OBJECT_STR) {
                 continue;
             }
@@ -618,7 +618,7 @@ static int stackdriver_format(const void *data, size_t bytes,
         }
         
         /* Extract insertId */
-        insertId_key = flb_sds_create("insertId"); 
+        insertId_key = flb_sds_create(INSERTID_IN_JSON); 
         if (get_msgpack_obj(&insertId_obj, obj, insertId_key, flb_sds_len(insertId_key), MSGPACK_OBJECT_STR) == 0) {
             insertId_extracted = true;
             special_fields_size += 1;
@@ -662,8 +662,6 @@ static int stackdriver_format(const void *data, size_t bytes,
 
         /* Add sourceLocation field into the log entry */
         if (sourceLocation_extracted) {
-            /*add_sourceLocation_field(&sourceLocation_file, &sourceLocation_line, 
-                                &sourceLocation_function, &mp_pck);*/
             msgpack_pack_str(&mp_pck, 14);
             msgpack_pack_str_body(&mp_pck, "sourceLocation", 14);
             msgpack_pack_object(&mp_pck, sourceLocation_obj);

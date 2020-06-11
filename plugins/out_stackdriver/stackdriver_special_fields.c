@@ -15,6 +15,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+
 #include "stackdriver.h"
 #include "stackdriver_special_fields.h"
 
@@ -79,7 +81,7 @@ static bool isInteger(char *s, int64_t size) {
     int i = 0;
 
     for(; i < size; ++ i) {
-        if(s[i] > '9' || s[i] < '0') {
+        if(!isdigit(s[i])) {
             return false;
         }
     }
