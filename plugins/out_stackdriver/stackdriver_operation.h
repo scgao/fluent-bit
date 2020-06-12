@@ -22,8 +22,15 @@
 
 #include "stackdriver.h"
 
-bool extract_operation(msgpack_object *operation, msgpack_object *obj);
+void add_operation_field(flb_sds_t *operation_id, flb_sds_t *operation_producer, 
+                                bool *operation_first, bool *operation_last, 
+                                msgpack_packer *mp_pck);
 
-int pack_object_except_operation(msgpack_packer *mp_pck, msgpack_object *obj);
+bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer, 
+                              bool *operation_first, bool *operation_last, 
+                              msgpack_object *obj, int *extra_subfields);
+
+void pack_extra_operation_subfields(msgpack_packer *mp_pck, msgpack_object *operation, int extra_subfields);
+
 
 #endif
