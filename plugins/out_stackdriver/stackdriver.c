@@ -444,7 +444,7 @@ static int get_severity_level(severity_t * s, const msgpack_object * o,
     return -1;
 }
 
-static void pack_json_payload(bool operation_extracted, int operation_extra_size, 
+static int pack_json_payload(bool operation_extracted, int operation_extra_size, 
                             msgpack_packer* mp_pck, msgpack_object *obj)
 {
     /* Specified fields include operation, sourceLocation ... */

@@ -129,8 +129,8 @@ void pack_extra_operation_subfields(msgpack_packer *mp_pck, msgpack_object *oper
 
     for (; p < pend; ++p) {
         if(strncmp("id", p->key.via.str.ptr, p->key.via.str.size) != 0 
-            && strncmp("producer", p->key.via.str.ptr, p->key.via.str.size != 0)
-            && strncmp("first", p->key.via.str.ptr, p->key.via.str.size != 0)
+            && strncmp("producer", p->key.via.str.ptr, p->key.via.str.size) != 0
+            && strncmp("first", p->key.via.str.ptr, p->key.via.str.size) != 0
             && strncmp("last", p->key.via.str.ptr, p->key.via.str.size) != 0) {
             msgpack_pack_object(mp_pck, p->key);
             msgpack_pack_object(mp_pck, p->val);
