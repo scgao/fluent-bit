@@ -444,14 +444,12 @@ static int get_severity_level(severity_t * s, const msgpack_object * o,
     return -1;
 }
 
-static void pack_json_payload(bool operation_extracted, msgpack_packer* mp_pck, 
-                                msgpack_object *obj)
+static void pack_json_payload(bool operation_extracted, int operation_extra_size, 
+                            msgpack_packer* mp_pck, msgpack_object *obj)
 {
     /* Specified fields include operation, sourceLocation ... */
-    /* TODO: deal with other fields later */
-
-    if (operation_extracted == true) {
-        pack_object_except_operation(mp_pck, obj);
+    if (operation_extracted) {
+        pack_object_except_operation(mp_pck, obj, operation_extra_size);
     }
     else {
         msgpack_pack_object(mp_pck, *obj);
@@ -473,19 +471,23 @@ static int stackdriver_format(const void *data, size_t bytes,
     char time_formatted[255];
     struct tm tm;
     struct flb_time tms;
-    severity_t severity;
     msgpack_object *obj;
     msgpack_unpacked result;
     msgpack_sbuffer mp_sbuf;
     msgpack_packer mp_pck;
     flb_sds_t out_buf;
 
-    /* Parameters in Operation*/
+    /* Parameters in Operation */
+    bool severity_extracted = false;
+    severity_t severity;
+
+    /* Parameters in Operation */
     flb_sds_t operation_id;
     flb_sds_t operation_producer;
     bool operation_first = false;
     bool operation_last = false;
     bool operation_extracted = false;
+    int operation_extra_size = 0;
 
 
     /* Count number of records */
@@ -572,27 +574,30 @@ static int stackdriver_format(const void *data, size_t bytes,
          * }
          */
         
-        /*  Parse jsonPayload and extract operation first */
+        /* Extract severity */
+         if (ctx->severity_key
+            && get_severity_level(&severity, obj, ctx->severity_key) == 0) {
+            severity_extracted = true;
+            entry_size += 1;
+        }
+
+        /* Extract operation */
         operation_id = flb_sds_create("");
         operation_producer = flb_sds_create("");
         operation_extracted = extract_operation(&operation_id, &operation_producer,
-                              &operation_first, &operation_last, obj);
+                              &operation_first, &operation_last, obj, &operation_extra_size);
         
         if (operation_extracted) {
             entry_size += 1;
         }
 
-        if (ctx->severity_key
-            && get_severity_level(&severity, obj, ctx->severity_key) == 0) {
-            /* additional field for severity */
-            entry_size += 1;
-            msgpack_pack_map(&mp_pck, entry_size);
+        msgpack_pack_map(&mp_pck, entry_size);
+        
+        /* Add severity into the log entry */
+        if (severity_extracted) {
             msgpack_pack_str(&mp_pck, 8);
             msgpack_pack_str_body(&mp_pck, "severity", 8);
             msgpack_pack_int(&mp_pck, severity);
-        }
-        else {
-            msgpack_pack_map(&mp_pck, entry_size);
         }
 
         /* Add operation field into the log entry */
@@ -608,7 +613,7 @@ static int stackdriver_format(const void *data, size_t bytes,
         /* jsonPayload */
         msgpack_pack_str(&mp_pck, 11);
         msgpack_pack_str_body(&mp_pck, "jsonPayload", 11);
-        pack_json_payload(operation_extracted, &mp_pck, obj);
+        pack_json_payload(operation_extracted, operation_extra_size, &mp_pck, obj);
 
         /* logName */
         len = snprintf(path, sizeof(path) - 1,

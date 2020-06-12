@@ -61,7 +61,7 @@ void add_operation_field(flb_sds_t *operation_id, flb_sds_t *operation_producer,
 /* Return true if operation extracted */
 bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer, 
                               bool *operation_first, bool *operation_last, 
-                              msgpack_object *obj)
+                              msgpack_object *obj, int *extra_subfields)
 {
     operation_status op_status = NO_OPERATION;
 
@@ -80,50 +80,78 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
                 flb_sds_destroy(field_name);
 
                 msgpack_object sub_field = p->val;
-                if (sub_field.via.map.size == 0) {
-                    return false;
-                }
-                else {
-                    op_status = OPERATION_EXISTED;
-            
-                    msgpack_object_kv* tmp_p = sub_field.via.map.ptr;
-                    msgpack_object_kv* const tmp_pend = sub_field.via.map.ptr + sub_field.via.map.size;
+                
+                op_status = OPERATION_EXISTED;
+        
+                msgpack_object_kv* tmp_p = sub_field.via.map.ptr;
+                msgpack_object_kv* const tmp_pend = sub_field.via.map.ptr + sub_field.via.map.size;
 
-                    for (; tmp_p < tmp_pend; ++tmp_p) {
-                        flb_sds_t sub_field_name = flb_sds_create_len(tmp_p->key.via.str.ptr, tmp_p->key.via.str.size);
+                for (; tmp_p < tmp_pend; ++tmp_p) {
+                    flb_sds_t sub_field_name = flb_sds_create_len(tmp_p->key.via.str.ptr, tmp_p->key.via.str.size);
 
-                        if (strcmp(sub_field_name, "id") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
-                            *operation_id = flb_sds_copy(*operation_id, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
+                    if (strcmp(sub_field_name, "id") == 0) {
+                        if(tmp_p->val.type != MSGPACK_OBJECT_STR) {
+                            continue;
                         }
-                        else if (strcmp(sub_field_name, "producer") == 0 && tmp_p->val.type == MSGPACK_OBJECT_STR) {
-                            *operation_producer = flb_sds_copy(*operation_producer, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
-                        }
-                        else if (strcmp(sub_field_name, "first") == 0 && tmp_p->val.type == MSGPACK_OBJECT_BOOLEAN) {
-                            *operation_first = tmp_p->val.via.boolean;
-                        }
-                        else if (strcmp(sub_field_name, "last") == 0 && tmp_p->val.type == MSGPACK_OBJECT_BOOLEAN) {
-                            *operation_last = tmp_p->val.via.boolean;
-                        }
-                        else {
-                            /* extra sub-fields or incorrect type of sub-fields */ 
-                            flb_sds_destroy(sub_field_name);
-                            return false;
-                        }
-                        flb_sds_destroy(sub_field_name);
+                        *operation_id = flb_sds_copy(*operation_id, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                     }
+                    else if (strcmp(sub_field_name, "producer") == 0 ) {
+                        if(tmp_p->val.type != MSGPACK_OBJECT_STR) {
+                            continue;
+                        }
+                        *operation_producer = flb_sds_copy(*operation_producer, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
+                    }
+                    else if (strcmp(sub_field_name, "first") == 0) {
+                        if(tmp_p->val.type != MSGPACK_OBJECT_BOOLEAN) {
+                            continue;
+                        }
+                        *operation_first = tmp_p->val.via.boolean;
+                    }
+                    else if (strcmp(sub_field_name, "last") == 0) {
+                        if(tmp_p->val.type != MSGPACK_OBJECT_BOOLEAN) {
+                            continue;
+                        }
+                        *operation_last = tmp_p->val.via.boolean;
+                    }
+                    else {
+                        /* extra sub-fields or incorrect type of sub-fields */ 
+                        *extra_subfields += 1;
+                    }
+                    flb_sds_destroy(sub_field_name);
                 }
             }
         }
     }
     
-    /* Invalid if id/producer is empty */
-    return op_status == OPERATION_EXISTED
-        && flb_sds_is_empty(*operation_producer) == FLB_FALSE && flb_sds_is_empty(*operation_id) == FLB_FALSE;
+    return op_status == OPERATION_EXISTED;
 }
 
-int pack_object_except_operation(msgpack_packer *mp_pck, msgpack_object *obj){
+static void pack_extra_subfields(msgpack_packer *mp_pck, msgpack_object *operation, int extra_subfields) {
+    msgpack_pack_map(mp_pck, extra_subfields);
+
+    msgpack_object_kv* p = operation->via.map.ptr;
+    msgpack_object_kv* const pend = operation->via.map.ptr + operation->via.map.size;
+
+    for (; p < pend; ++p) {
+        if(strncmp("id", p->key.via.str.ptr, p->key.via.str.size) != 0 
+            && strncmp("producer", p->key.via.str.ptr, p->key.via.str.size != 0)
+            && strncmp("first", p->key.via.str.ptr, p->key.via.str.size != 0)
+            && strncmp("last", p->key.via.str.ptr, p->key.via.str.size) != 0) {
+            msgpack_pack_object(mp_pck, p->key);
+            msgpack_pack_object(mp_pck, p->val);
+        }
+    }
+
+}
+
+int pack_object_except_operation(msgpack_packer *mp_pck, msgpack_object *obj, int extra_subfields){
 	/* obj type must be MSGPACK_OBJECT_MAP */
-    int ret = msgpack_pack_map(mp_pck, obj->via.map.size - 1);
+    // TODO: remain modifying
+    int special_fields = 0;
+    if(extra_subfields == 0) {
+        special_fields += 1;
+    }
+    int ret = msgpack_pack_map(mp_pck, obj->via.map.size - special_fields);
     if(ret < 0) {
         return ret;
     }
@@ -133,6 +161,10 @@ int pack_object_except_operation(msgpack_packer *mp_pck, msgpack_object *obj){
         for(; kv != kvend; ++kv	) {
             flb_sds_t cur_key = flb_sds_create_len(kv->key.via.str.ptr, kv->key.via.str.size);
             if (strcmp(cur_key, OPERATION_FIELD_IN_JSON) == 0 && kv->val.type == MSGPACK_OBJECT_MAP) {
+                if(extra_subfields > 0) {
+                    msgpack_pack_object(mp_pck, kv->key);
+                    pack_extra_subfields(mp_pck, &kv->val, extra_subfields);
+                }
                 flb_sds_destroy(cur_key);
                 continue;
             }
