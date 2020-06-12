@@ -31,6 +31,8 @@
 #include "stackdriver.h"
 #include "stackdriver_conf.h"
 #include "stackdriver_special_fields.h"
+#include "stackdriver_httpRequest.h"
+
 #include <mbedtls/base64.h>
 #include <mbedtls/sha256.h>
 
