@@ -444,11 +444,14 @@ static int get_severity_level(severity_t * s, const msgpack_object * o,
     return -1;
 }
 
-static int pack_json_payload(bool operation_extracted, int operation_extra_size, 
+static int pack_json_payload(bool insertId_extracted, bool operation_extracted, int operation_extra_size, 
                             msgpack_packer* mp_pck, msgpack_object *obj)
 {
     /* Specified fields include operation, sourceLocation ... */
     int to_remove = 0;
+    if(insertId_extracted) {
+        to_remove += 1;
+    }
     if(operation_extracted && operation_extra_size == 0) {
         to_remove += 1;
     }
@@ -461,6 +464,11 @@ static int pack_json_payload(bool operation_extracted, int operation_extra_size,
         msgpack_object_kv* kv = obj->via.map.ptr;
         msgpack_object_kv* const kvend = obj->via.map.ptr + obj->via.map.size;
         for(; kv != kvend; ++kv	) {
+            if (insertId_extracted && strncmp(INSERTID_IN_JSON,kv->key.via.str.ptr, kv->key.via.str.size) == 0 
+            	&& kv->val.type == MSGPACK_OBJECT_STR) {
+                continue;
+            }
+
             if (strncmp(OPERATION_FIELD_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
                 && kv->val.type == MSGPACK_OBJECT_MAP) {
 
@@ -501,11 +509,16 @@ static int stackdriver_format(const void *data, size_t bytes,
     msgpack_packer mp_pck;
     flb_sds_t out_buf;
 
-    /* Parameters in severity */
+    /* Parameters for severity */
     bool severity_extracted = false;
     severity_t severity;
 
-    /* Parameters in Operation */
+    /* Parameters for insertId */
+    msgpack_object insertId_obj;
+    flb_sds_t insertId_key;
+    bool insertId_extracted = false;
+
+    /* Parameters for Operation */
     flb_sds_t operation_id;
     flb_sds_t operation_producer;
     bool operation_first = false;
@@ -605,6 +618,13 @@ static int stackdriver_format(const void *data, size_t bytes,
             entry_size += 1;
         }
 
+        /* Extract insertId */
+        insertId_key = flb_sds_create(INSERTID_IN_JSON);
+        if (get_msgpack_obj(&insertId_obj, obj, insertId_key, flb_sds_len(insertId_key), MSGPACK_OBJECT_STR) == 0) {
+            insertId_extracted = true;
+            entry_size += 1;
+        }
+
         /* Extract operation */
         operation_id = flb_sds_create("");
         operation_producer = flb_sds_create("");
@@ -624,6 +644,13 @@ static int stackdriver_format(const void *data, size_t bytes,
             msgpack_pack_int(&mp_pck, severity);
         }
 
+        /* Add insertId field into the log entry */
+        if (insertId_extracted) {
+            msgpack_pack_str(&mp_pck, 8);
+            msgpack_pack_str_body(&mp_pck, "insertId", 8);
+            msgpack_pack_object(&mp_pck, insertId_obj);
+        }
+
         /* Add operation field into the log entry */
         if (operation_extracted) {
             add_operation_field(&operation_id, &operation_producer,
@@ -631,13 +658,14 @@ static int stackdriver_format(const void *data, size_t bytes,
         }
         
         /* Clean up id and producer if operation extracted */
+        flb_sds_destroy(insertId_key);
         flb_sds_destroy(operation_id);
         flb_sds_destroy(operation_producer);
 
         /* jsonPayload */
         msgpack_pack_str(&mp_pck, 11);
         msgpack_pack_str_body(&mp_pck, "jsonPayload", 11);
-        pack_json_payload(operation_extracted, operation_extra_size, &mp_pck, obj);
+        pack_json_payload(insertId_extracted, operation_extracted, operation_extra_size, &mp_pck, obj);
 
         /* logName */
         len = snprintf(path, sizeof(path) - 1,
