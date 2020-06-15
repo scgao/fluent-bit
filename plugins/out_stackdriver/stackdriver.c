@@ -31,6 +31,7 @@
 #include "stackdriver.h"
 #include "stackdriver_conf.h"
 #include "stackdriver_operation.h"
+#include "stackdriver_sourceLocation.h"
 #include <mbedtls/base64.h>
 #include <mbedtls/sha256.h>
 
@@ -445,6 +446,7 @@ static int get_severity_level(severity_t * s, const msgpack_object * o,
 }
 
 static int pack_json_payload(bool insertId_extracted, bool operation_extracted, int operation_extra_size, 
+                            bool sourceLocation_extracted, int sourceLocation_extra_size, 
                             msgpack_packer* mp_pck, msgpack_object *obj)
 {
     /* Specified fields include operation, sourceLocation ... */
@@ -453,6 +455,9 @@ static int pack_json_payload(bool insertId_extracted, bool operation_extracted, 
         to_remove += 1;
     }
     if(operation_extracted && operation_extra_size == 0) {
+        to_remove += 1;
+    }
+    if(sourceLocation_extracted && sourceLocation_extra_size == 0) {
         to_remove += 1;
     }
 
@@ -475,6 +480,16 @@ static int pack_json_payload(bool insertId_extracted, bool operation_extracted, 
                 if(operation_extra_size > 0) {
                     msgpack_pack_object(mp_pck, kv->key);
                     pack_extra_operation_subfields(mp_pck, &kv->val, operation_extra_size);
+                }
+                continue;
+            }
+
+            if (strncmp(SOURCELOCATION_FIELD_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
+                && kv->val.type == MSGPACK_OBJECT_MAP) {
+
+                if(sourceLocation_extra_size > 0) {
+                    msgpack_pack_object(mp_pck, kv->key);
+                    pack_extra_sourceLocation_subfields(mp_pck, &kv->val, sourceLocation_extra_size);
                 }
                 continue;
             }
@@ -526,6 +541,12 @@ static int stackdriver_format(const void *data, size_t bytes,
     bool operation_extracted = false;
     int operation_extra_size = 0;
 
+    /* Parameters for sourceLocation */
+    flb_sds_t sourceLocation_file;
+    int64_t sourceLocation_line = 0;
+    flb_sds_t sourceLocation_function;
+    bool sourceLocation_extracted = false;
+    int sourceLocation_extra_size = 0;
 
     /* Count number of records */
     array_size = flb_mp_count(data, bytes);
@@ -630,8 +651,17 @@ static int stackdriver_format(const void *data, size_t bytes,
         operation_producer = flb_sds_create("");
         operation_extracted = extract_operation(&operation_id, &operation_producer,
                               &operation_first, &operation_last, obj, &operation_extra_size);
-        
         if (operation_extracted) {
+            entry_size += 1;
+        }
+
+        /* Extract sourceLocation */
+        sourceLocation_file = flb_sds_create("");
+        sourceLocation_function = flb_sds_create("");
+        sourceLocation_extracted = extract_sourceLocation(&sourceLocation_file, &sourceLocation_line,
+                              &sourceLocation_function, obj, &sourceLocation_extra_size);
+        
+        if (sourceLocation_extracted) {
             entry_size += 1;
         }
 
@@ -656,16 +686,25 @@ static int stackdriver_format(const void *data, size_t bytes,
             add_operation_field(&operation_id, &operation_producer,
                                 &operation_first, &operation_last, &mp_pck);
         }
+
+        /* Add sourceLocation field into the log entry */
+        if (sourceLocation_extracted) {
+            add_sourceLocation_field(&sourceLocation_file, sourceLocation_line, 
+                                &sourceLocation_function, &mp_pck);
+        }
         
-        /* Clean up id and producer if operation extracted */
+        /* Clean up */
         flb_sds_destroy(insertId_key);
         flb_sds_destroy(operation_id);
         flb_sds_destroy(operation_producer);
+        flb_sds_destroy(sourceLocation_file);
+        flb_sds_destroy(sourceLocation_function);
 
         /* jsonPayload */
         msgpack_pack_str(&mp_pck, 11);
         msgpack_pack_str_body(&mp_pck, "jsonPayload", 11);
-        pack_json_payload(insertId_extracted, operation_extracted, operation_extra_size, &mp_pck, obj);
+        pack_json_payload(insertId_extracted, operation_extracted, operation_extra_size, 
+                        sourceLocation_extracted, sourceLocation_extra_size, &mp_pck, obj);
 
         /* logName */
         len = snprintf(path, sizeof(path) - 1,

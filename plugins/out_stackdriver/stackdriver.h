@@ -48,6 +48,7 @@
 
 #define INSERTID_IN_JSON "logging.googleapis.com/insertId"
 #define OPERATION_FIELD_IN_JSON "logging.googleapis.com/operation"
+#define SOURCELOCATION_FIELD_IN_JSON "logging.googleapis.com/sourceLocation"
 
 struct flb_stackdriver {
     /* credentials */
