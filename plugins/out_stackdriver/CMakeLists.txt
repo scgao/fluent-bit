@@ -4,6 +4,7 @@ set(src
   stackdriver.c
   stackdriver_operation.c
   stackdriver_sourceLocation.c
+  stackdriver_httpRequest.c
   )
 
 FLB_PLUGIN(out_stackdriver "${src}" "")

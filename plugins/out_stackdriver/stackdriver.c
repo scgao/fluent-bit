@@ -32,6 +32,7 @@
 #include "stackdriver_conf.h"
 #include "stackdriver_operation.h"
 #include "stackdriver_sourceLocation.h"
+#include "stackdriver_httpRequest.h"
 #include <mbedtls/base64.h>
 #include <mbedtls/sha256.h>
 
@@ -446,7 +447,8 @@ static int get_severity_level(severity_t * s, const msgpack_object * o,
 }
 
 static int pack_json_payload(bool insertId_extracted, bool operation_extracted, int operation_extra_size, 
-                            bool sourceLocation_extracted, int sourceLocation_extra_size, 
+                            bool sourceLocation_extracted, int sourceLocation_extra_size,
+                            bool httpRequest_extracted, int httpRequest_extra_size, 
                             msgpack_packer* mp_pck, msgpack_object *obj)
 {
     /* Specified fields include operation, sourceLocation ... */
@@ -458,6 +460,9 @@ static int pack_json_payload(bool insertId_extracted, bool operation_extracted, 
         to_remove += 1;
     }
     if(sourceLocation_extracted && sourceLocation_extra_size == 0) {
+        to_remove += 1;
+    }
+    if(httpRequest_extracted && httpRequest_extra_size == 0) {
         to_remove += 1;
     }
 
@@ -490,6 +495,16 @@ static int pack_json_payload(bool insertId_extracted, bool operation_extracted, 
                 if(sourceLocation_extra_size > 0) {
                     msgpack_pack_object(mp_pck, kv->key);
                     pack_extra_sourceLocation_subfields(mp_pck, &kv->val, sourceLocation_extra_size);
+                }
+                continue;
+            }
+
+            if (strncmp(HTTPREQUEST_FIELD_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
+                && kv->val.type == MSGPACK_OBJECT_MAP) {
+
+                if(httpRequest_extra_size > 0) {
+                    msgpack_pack_object(mp_pck, kv->key);
+                    pack_extra_httpRequest_subfields(mp_pck, &kv->val, httpRequest_extra_size);
                 }
                 continue;
             }
@@ -547,6 +562,11 @@ static int stackdriver_format(const void *data, size_t bytes,
     flb_sds_t sourceLocation_function;
     bool sourceLocation_extracted = false;
     int sourceLocation_extra_size = 0;
+
+    /* Parameters for httpRequest */
+    httpRequest http_request;
+    bool httpRequest_extracted = false;
+    int httpRequest_extra_size = 0;
 
     /* Count number of records */
     array_size = flb_mp_count(data, bytes);
@@ -671,6 +691,14 @@ static int stackdriver_format(const void *data, size_t bytes,
             entry_size += 1;
         }
 
+        /* Extract httpRequest */
+        init_httpRequest(&http_request);
+        httpRequest_extra_size = 0;
+        httpRequest_extracted = extract_httpRequest(&http_request, obj, &httpRequest_extra_size);
+        if (httpRequest_extracted) {
+            entry_size += 1;
+        }
+
         msgpack_pack_map(&mp_pck, entry_size);
         
         /* Add severity into the log entry */
@@ -698,6 +726,11 @@ static int stackdriver_format(const void *data, size_t bytes,
             add_sourceLocation_field(&sourceLocation_file, sourceLocation_line, 
                                 &sourceLocation_function, &mp_pck);
         }
+
+        /* Add httpRequest field into the log entry */
+        if (httpRequest_extracted) {
+            add_httpRequest_field(&http_request, &mp_pck);
+        }
         
         /* Clean up */
         flb_sds_destroy(insertId_key);
@@ -705,12 +738,15 @@ static int stackdriver_format(const void *data, size_t bytes,
         flb_sds_destroy(operation_producer);
         flb_sds_destroy(sourceLocation_file);
         flb_sds_destroy(sourceLocation_function);
+        destroy_httpRequest(&http_request);
 
         /* jsonPayload */
         msgpack_pack_str(&mp_pck, 11);
         msgpack_pack_str_body(&mp_pck, "jsonPayload", 11);
         pack_json_payload(insertId_extracted, operation_extracted, operation_extra_size, 
-                        sourceLocation_extracted, sourceLocation_extra_size, &mp_pck, obj);
+                        sourceLocation_extracted, sourceLocation_extra_size,
+                        httpRequest_extracted, httpRequest_extra_size,
+                        &mp_pck, obj);
 
         /* logName */
         len = snprintf(path, sizeof(path) - 1,
