@@ -468,9 +468,9 @@ static int pack_json_payload(bool insertId_extracted, bool operation_extracted, 
     else {
         msgpack_object_kv* kv = obj->via.map.ptr;
         msgpack_object_kv* const kvend = obj->via.map.ptr + obj->via.map.size;
-        for(; kv != kvend; ++kv	) {
-            if (insertId_extracted && strncmp(INSERTID_IN_JSON,kv->key.via.str.ptr, kv->key.via.str.size) == 0 
-            	&& kv->val.type == MSGPACK_OBJECT_STR) {
+        for(; kv != kvend; ++kv) {
+            if (insertId_extracted && strncmp(INSERTID_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
+                && kv->val.type == MSGPACK_OBJECT_STR) {
                 continue;
             }
 
@@ -631,7 +631,8 @@ static int stackdriver_format(const void *data, size_t bytes,
          *  "timestamp": "..."
          * }
          */
-        
+        entry_size = 3;
+
         /* Extract severity */
          if (ctx->severity_key
             && get_severity_level(&severity, obj, ctx->severity_key) == 0) {
@@ -649,6 +650,9 @@ static int stackdriver_format(const void *data, size_t bytes,
         /* Extract operation */
         operation_id = flb_sds_create("");
         operation_producer = flb_sds_create("");
+        operation_first = false;
+        operation_last = false;
+        operation_extra_size = 0;
         operation_extracted = extract_operation(&operation_id, &operation_producer,
                               &operation_first, &operation_last, obj, &operation_extra_size);
         if (operation_extracted) {
@@ -658,6 +662,8 @@ static int stackdriver_format(const void *data, size_t bytes,
         /* Extract sourceLocation */
         sourceLocation_file = flb_sds_create("");
         sourceLocation_function = flb_sds_create("");
+        sourceLocation_line = 0;
+        sourceLocation_extra_size = 0;
         sourceLocation_extracted = extract_sourceLocation(&sourceLocation_file, &sourceLocation_line,
                               &sourceLocation_function, obj, &sourceLocation_extra_size);
         
