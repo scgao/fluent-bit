@@ -564,7 +564,7 @@ static int stackdriver_format(const void *data, size_t bytes,
     int sourceLocation_extra_size = 0;
 
     /* Parameters for httpRequest */
-    httpRequest http_request;
+    struct httpRequest http_request;
     bool httpRequest_extracted = false;
     int httpRequest_extra_size = 0;
 

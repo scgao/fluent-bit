@@ -23,7 +23,7 @@ typedef enum {
     HTTPREQUEST_EXISTED = 2
 } httpRequest_status;
 
-void init_httpRequest(httpRequest *http_request)
+void init_httpRequest(struct httpRequest *http_request)
 {
     http_request->requestMethod = flb_sds_create("");
     http_request->requestUrl = flb_sds_create("");
@@ -44,7 +44,7 @@ void init_httpRequest(httpRequest *http_request)
     http_request->cacheValidatedWithOriginServer = false;
 }
 
-void destroy_httpRequest(httpRequest *http_request)
+void destroy_httpRequest(struct httpRequest *http_request)
 {
     flb_sds_destroy(http_request->requestMethod);
     flb_sds_destroy(http_request->requestUrl);
@@ -56,11 +56,22 @@ void destroy_httpRequest(httpRequest *http_request)
     flb_sds_destroy(http_request->protocol);
 }
 
-void add_httpRequest_field(httpRequest *http_request, msgpack_packer *mp_pck)
+void add_httpRequest_field(struct httpRequest *http_request, msgpack_packer *mp_pck)
 {    
-    msgpack_pack_str(mp_pck, 1);
+    msgpack_pack_str(mp_pck, 11);
     msgpack_pack_str_body(mp_pck, "httpRequest", 11);
-    msgpack_pack_map(mp_pck, 14);
+
+    if (flb_sds_is_empty(http_request->latency) == FLB_TRUE) {
+        msgpack_pack_map(mp_pck, 14);
+    }
+    else {
+        msgpack_pack_map(mp_pck, 15);
+
+        msgpack_pack_str(mp_pck, 7);
+        msgpack_pack_str_body(mp_pck,"latency", 7);
+        msgpack_pack_str(mp_pck, flb_sds_len(http_request->latency));
+        msgpack_pack_str_body(mp_pck, http_request->latency, flb_sds_len(http_request->latency));
+    }
 
     /* String sub-fields */
     msgpack_pack_str(mp_pck, 13);
@@ -92,11 +103,6 @@ void add_httpRequest_field(httpRequest *http_request, msgpack_packer *mp_pck)
     msgpack_pack_str_body(mp_pck,"referer", 7);
     msgpack_pack_str(mp_pck, flb_sds_len(http_request->referer));
     msgpack_pack_str_body(mp_pck, http_request->referer, flb_sds_len(http_request->referer));
-
-    msgpack_pack_str(mp_pck, 7);
-    msgpack_pack_str_body(mp_pck,"latency", 7);
-    msgpack_pack_str(mp_pck, flb_sds_len(http_request->latency));
-    msgpack_pack_str_body(mp_pck, http_request->latency, flb_sds_len(http_request->latency));
 
     msgpack_pack_str(mp_pck, 8);
     msgpack_pack_str_body(mp_pck,"protocol", 8);
@@ -158,7 +164,7 @@ static bool validate_latency(msgpack_object_str latency) {
 }
 
 /* Return true if httpRequest extracted */
-bool extract_httpRequest(httpRequest *http_request, msgpack_object *obj, int *extra_subfields)
+bool extract_httpRequest(struct httpRequest *http_request, msgpack_object *obj, int *extra_subfields)
 {
     httpRequest_status op_status = NO_HTTPREQUEST;
 
@@ -247,7 +253,7 @@ bool extract_httpRequest(httpRequest *http_request, msgpack_object *obj, int *ex
                     }
                     else if (strncmp("status", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
                         if (tmp_p->val.type == MSGPACK_OBJECT_STR) {
-                            http_request->requesstatustSize = atoll(tmp_p->val.via.str.ptr);
+                            http_request->status = atoll(tmp_p->val.via.str.ptr);
                         }
                         else if (tmp_p->val.type == MSGPACK_OBJECT_POSITIVE_INTEGER) {
                             http_request->status = tmp_p->val.via.i64;

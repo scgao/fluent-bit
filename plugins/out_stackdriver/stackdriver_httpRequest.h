@@ -42,10 +42,10 @@ struct httpRequest {
     bool cacheValidatedWithOriginServer;
 };
 
-void init_httpRequest(httpRequest *http_request);
-void destroy_httpRequest(httpRequest *http_request);
-void add_httpRequest_field(httpRequest *http_request, msgpack_packer *mp_pck);
-bool extract_httpRequest(httpRequest *http_request, msgpack_object *obj, int *extra_subfields);
+void init_httpRequest(struct httpRequest *http_request);
+void destroy_httpRequest(struct httpRequest *http_request);
+void add_httpRequest_field(struct httpRequest *http_request, msgpack_packer *mp_pck);
+bool extract_httpRequest(struct httpRequest *http_request, msgpack_object *obj, int *extra_subfields);
 void pack_extra_httpRequest_subfields(msgpack_packer *mp_pck, msgpack_object *http_request, int extra_subfields);
 
 #endif
