@@ -30,6 +30,7 @@
 
 /* JSON payload example */
 #include "data/stackdriver/json.h"
+#include "data/stackdriver/stackdriver_test_operation.h"
 
 /*
  * Fluent Bit Stackdriver plugin, always set as payload a JSON strings contained in a
@@ -78,6 +79,9 @@ static int mp_kv_cmp(char *json_data, size_t json_len, char *key_accessor, char 
     }
 
     /* Process map using the record_accessor */
+    printf("size: %d", mk_list_size(&ra->list));
+    fflush(stdout);
+    
     rval = flb_ra_get_value_object(ra, map);
     TEST_CHECK(rval != NULL);
     msgpack_unpacked_destroy(&result);
@@ -138,6 +142,31 @@ static void cb_check_gce_instance(void *ctx, int ffd,
     /* instance_id */
     ret = mp_kv_cmp(res_data, res_size,
                     "$resource['labels']['instance_id']", "333222111");
+    TEST_CHECK(ret == FLB_TRUE);
+
+    flb_sds_destroy(res_data);
+}
+
+static void cb_check_operation_common_case(void *ctx, int ffd,
+                                           int res_ret, void *res_data, size_t res_size,
+                                           void *data)
+{
+    int ret;
+
+    /* operation_id */
+    ret = mp_kv_cmp(res_data, res_size, "$entries['0']['operation']['id']", "test_id");
+    TEST_CHECK(ret == FLB_TRUE);
+
+    /* operation_producer */
+    ret = mp_kv_cmp(res_data, res_size, "$entries['0']['operation']['producer']", "test_producer");
+    TEST_CHECK(ret == FLB_TRUE);
+
+    /* operation_first */
+    ret = mp_kv_cmp(res_data, res_size, "$entries['0']['operation']['first']", "true");
+    TEST_CHECK(ret == FLB_TRUE);
+
+    /* operation_last */
+    ret = mp_kv_cmp(res_data, res_size, "$entries['0']['operation']['last']", "true");
     TEST_CHECK(ret == FLB_TRUE);
 
     flb_sds_destroy(res_data);
@@ -224,9 +253,50 @@ void flb_test_resource_gce_instance()
     flb_destroy(ctx);
 }
 
+void flb_test_operation_common()
+{
+    int ret;
+    int size = sizeof(OPERATION_COMMON_CASE) - 1;
+    flb_ctx_t *ctx;
+    int in_ffd;
+    int out_ffd;
+
+    /* Create context, flush every second (some checks omitted here) */
+    ctx = flb_create();
+    flb_service_set(ctx, "flush", "1", "grace", "1", NULL);
+
+    /* Lib input mode */
+    in_ffd = flb_input(ctx, (char *) "lib", NULL);
+    flb_input_set(ctx, in_ffd, "tag", "test", NULL);
+
+    /* Stackdriver output */
+    out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
+    flb_output_set(ctx, out_ffd,
+                   "match", "test",
+                   "resource", "gce_instance",
+                   NULL);
+
+    /* Enable test mode */
+    ret = flb_output_set_test(ctx, out_ffd, "formatter",
+                              cb_check_operation_common_case,
+                              NULL);
+
+    /* Start */
+    ret = flb_start(ctx);
+    TEST_CHECK(ret == 0);
+
+    /* Ingest data sample */
+    flb_lib_push(ctx, in_ffd, (char *) OPERATION_COMMON_CASE, size);
+
+    sleep(2);
+    flb_stop(ctx);
+    flb_destroy(ctx);
+}
+
 /* Test list */
 TEST_LIST = {
     {"resource_global"      , flb_test_resource_global },
     {"resource_gce_instance", flb_test_resource_gce_instance },
+    {"operation_common_case", flb_test_operation_common},
     {NULL, NULL}
 };

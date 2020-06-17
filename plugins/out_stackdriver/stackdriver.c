@@ -613,6 +613,9 @@ static int stackdriver_format(struct flb_config *config,
         /* Extract operation */
         operation_id = flb_sds_create("");
         operation_producer = flb_sds_create("");
+        operation_first = false;
+        operation_last = false;
+        operation_extra_size = 0;
         operation_extracted = extract_operation(&operation_id, &operation_producer,
                               &operation_first, &operation_last, obj, &operation_extra_size);
         
@@ -668,6 +671,19 @@ static int stackdriver_format(struct flb_config *config,
         msgpack_pack_str(&mp_pck, s);
         msgpack_pack_str_body(&mp_pck, time_formatted, s);
     }
+
+    /* TODO: remove later */
+    msgpack_zone mempool;
+    msgpack_zone_init(&mempool, 2048);
+
+    msgpack_object deserialized;
+    msgpack_unpack(mp_sbuf.data, mp_sbuf.size, NULL, &mempool, &deserialized);
+	
+    printf("The msg_packer is: \n");
+    msgpack_object_print(stdout, deserialized);
+    printf("\n");
+    fflush(stdout);
+    msgpack_zone_destroy(&mempool);
 
     /* Convert from msgpack to JSON */
     out_buf = flb_msgpack_raw_to_json_sds(mp_sbuf.data, mp_sbuf.size);
