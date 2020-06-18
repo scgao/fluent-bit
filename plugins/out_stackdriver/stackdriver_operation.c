@@ -60,8 +60,8 @@ void add_operation_field(flb_sds_t *operation_id, flb_sds_t *operation_producer,
 
 /* Return true if operation extracted */
 int extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer, 
-                       int *operation_first, int *operation_last, 
-                       msgpack_object *obj, int *extra_subfields)
+                      int *operation_first, int *operation_last, 
+                      msgpack_object *obj, int *extra_subfields)
 {
     operation_status op_status = NO_OPERATION;
 

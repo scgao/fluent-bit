@@ -350,8 +350,8 @@ static void cb_check_operation_common_case(void *ctx, int ffd,
 }
 
 static void cb_check_empty_operation(void *ctx, int ffd,
-                                           int res_ret, void *res_data, size_t res_size,
-                                           void *data)
+                                     int res_ret, void *res_data, size_t res_size,
+                                     void *data)
 {
     int ret;
 
@@ -379,8 +379,8 @@ static void cb_check_empty_operation(void *ctx, int ffd,
 }
 
 static void cb_check_operation_in_string(void *ctx, int ffd,
-                                           int res_ret, void *res_data, size_t res_size,
-                                           void *data)
+                                         int res_ret, void *res_data, size_t res_size,
+                                         void *data)
 {
     int ret;
 
@@ -396,8 +396,8 @@ static void cb_check_operation_in_string(void *ctx, int ffd,
 
 
 static void cb_check_operation_partial_subfields(void *ctx, int ffd,
-                                           int res_ret, void *res_data, size_t res_size,
-                                           void *data)
+                                                 int res_ret, void *res_data, size_t res_size,
+                                                 void *data)
 {
     int ret;
 
@@ -425,8 +425,8 @@ static void cb_check_operation_partial_subfields(void *ctx, int ffd,
 }
 
 static void cb_check_operation_incorrect_type_subfields(void *ctx, int ffd,
-                                           int res_ret, void *res_data, size_t res_size,
-                                           void *data)
+                                                        int res_ret, void *res_data, size_t res_size,
+                                                        void *data)
 {
     int ret;
 
@@ -454,8 +454,8 @@ static void cb_check_operation_incorrect_type_subfields(void *ctx, int ffd,
 }
 
 static void cb_check_operation_extra_subfields(void *ctx, int ffd,
-                                           int res_ret, void *res_data, size_t res_size,
-                                           void *data)
+                                               int res_ret, void *res_data, size_t res_size,
+                                               void *data)
 {
     int ret;
 
@@ -811,7 +811,7 @@ void flb_test_operation_extra_subfields()
 
 /* Test list */
 TEST_LIST = {
-    {"resource_global"      , flb_test_resource_global },
+    {"resource_global", flb_test_resource_global },
     {"resource_gce_instance", flb_test_resource_gce_instance },
     {"operation_common_case", flb_test_operation_common},
     {"empty_operation", flb_test_empty_operation},

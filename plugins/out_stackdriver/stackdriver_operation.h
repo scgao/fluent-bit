@@ -27,8 +27,8 @@ void add_operation_field(flb_sds_t *operation_id, flb_sds_t *operation_producer,
                          msgpack_packer *mp_pck);
 
 int extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer, 
-                       int *operation_first, int *operation_last, 
-                       msgpack_object *obj, int *extra_subfields);
+                      int *operation_first, int *operation_last, 
+                      msgpack_object *obj, int *extra_subfields);
 
 void pack_extra_operation_subfields(msgpack_packer *mp_pck, msgpack_object *operation, int extra_subfields);
 
