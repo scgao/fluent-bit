@@ -524,7 +524,6 @@ static int stackdriver_format(struct flb_config *config,
     int operation_extracted = FLB_FALSE;
     int operation_extra_size = 0;
 
-
     /* Count number of records */
     array_size = flb_mp_count(data, bytes);
 
