@@ -15,6 +15,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+#include <regex.h>
 #include "stackdriver.h"
 #include "stackdriver_httpRequest.h"
 
@@ -159,8 +160,36 @@ void add_httpRequest_field(struct httpRequest *http_request, msgpack_packer *mp_
  *      whitespace (opt.) + integer + point & decimal (opt.)
  *      + whitespace (opt.) + "s" + whitespace (opt.) 
  */
-static bool validate_latency(msgpack_object_str latency) {
-    return false;
+static void validate_latency(msgpack_object_str latency_in_payload, struct httpRequest *http_request) {
+    char *pattern = "^\\s*[0-9]*(\.[0-9][0-9]*)?\\s*s\\s*$";
+    regex_t reg;
+    int nm = 10;
+    regmatch_t pmatch[nm];
+    int status = 0;
+
+    char tmp[latency_in_payload.size];
+    flb_sds_t latency = flb_sds_create_len(latency_in_payload.ptr, latency_in_payload.size);
+    int i = 0, j = 0;
+
+    printf("size: %d\n", strlen(latency));
+    fflush(stdout);
+
+    regcomp(&reg, pattern, REG_EXTENDED);
+    status = regexec(&reg, (char* )latency, nm, pmatch, 0);
+
+    if (status != REG_NOMATCH) {
+        printf("good\n");
+        fflush(stdout);
+        for (; i < latency_in_payload.size; ++ i) {
+            if (latency_in_payload.ptr[i] == '.' || latency_in_payload.ptr[i] == 's' || isdigit(latency_in_payload.ptr[i])) {
+                tmp[j] = latency_in_payload.ptr[i];
+                ++ j;
+            }
+        }
+        http_request->latency = flb_sds_copy(http_request->latency, tmp, j);
+    }
+
+    regfree(&reg);
 }
 
 /* Return true if httpRequest extracted */
@@ -230,9 +259,7 @@ bool extract_httpRequest(struct httpRequest *http_request, msgpack_object *obj, 
                         if(tmp_p->val.type != MSGPACK_OBJECT_STR) {
                             continue;
                         }
-                        if(validate_latency(tmp_p->key.via.str)) {
-                            http_request->latency = flb_sds_copy(http_request->latency, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
-                        }
+                        validate_latency(tmp_p->val.via.str, http_request);
                     }
 
                     else if (strncmp("requestSize", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
