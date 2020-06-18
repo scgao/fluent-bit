@@ -154,19 +154,19 @@ static void cb_check_operation_common_case(void *ctx, int ffd,
     int ret;
 
     /* operation_id */
-    ret = mp_kv_cmp(res_data, res_size, "$entries['0']['operation']['id']", "test_id");
+    ret = mp_kv_cmp(res_data, res_size, "$entries[0]['operation']['id']", "test_id");
     TEST_CHECK(ret == FLB_TRUE);
 
     /* operation_producer */
-    ret = mp_kv_cmp(res_data, res_size, "$entries['0']['operation']['producer']", "test_producer");
+    ret = mp_kv_cmp(res_data, res_size, "$entries[0]['operation']['producer']", "test_producer");
     TEST_CHECK(ret == FLB_TRUE);
 
     /* operation_first */
-    ret = mp_kv_cmp(res_data, res_size, "$entries['0']['operation']['first']", "true");
+    ret = mp_kv_cmp(res_data, res_size, "$entries[0]['operation']['first']", "true");
     TEST_CHECK(ret == FLB_TRUE);
 
     /* operation_last */
-    ret = mp_kv_cmp(res_data, res_size, "$entries['0']['operation']['last']", "true");
+    ret = mp_kv_cmp(res_data, res_size, "$entries[0]['operation']['last']", "true");
     TEST_CHECK(ret == FLB_TRUE);
 
     flb_sds_destroy(res_data);
