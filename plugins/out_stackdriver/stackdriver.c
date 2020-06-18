@@ -448,39 +448,45 @@ static int get_severity_level(severity_t * s, const msgpack_object * o,
 }
 
 static int pack_json_payload(bool operation_extracted, int operation_extra_size, 
-                            msgpack_packer* mp_pck, msgpack_object *obj)
+                             msgpack_packer* mp_pck, msgpack_object *obj)
 {
     /* Specified fields include operation, sourceLocation ... */
     int to_remove = 0;
+    int ret;
+    msgpack_object_kv *kv = obj->via.map.ptr;
+    msgpack_object_kv *const kvend = obj->via.map.ptr + obj->via.map.size;
+
     if(operation_extracted && operation_extra_size == 0) {
         to_remove += 1;
     }
 
-    int ret = msgpack_pack_map(mp_pck, obj->via.map.size - to_remove);
+    ret = msgpack_pack_map(mp_pck, obj->via.map.size - to_remove);
     if(ret < 0) {
         return ret;
     }
-    else {
-        msgpack_object_kv* kv = obj->via.map.ptr;
-        msgpack_object_kv* const kvend = obj->via.map.ptr + obj->via.map.size;
-        for(; kv != kvend; ++kv	) {
-            if (strncmp(OPERATION_FIELD_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
-                && kv->val.type == MSGPACK_OBJECT_MAP) {
+    
+    for(; kv != kvend; ++kv	) {
+        if (strncmp(OPERATION_FIELD_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
+            && kv->val.type == MSGPACK_OBJECT_MAP) {
 
-                if(operation_extra_size > 0) {
-                    msgpack_pack_object(mp_pck, kv->key);
-                    pack_extra_operation_subfields(mp_pck, &kv->val, operation_extra_size);
-                }
-                continue;
+            if(operation_extra_size > 0) {
+                msgpack_pack_object(mp_pck, kv->key);
+                pack_extra_operation_subfields(mp_pck, &kv->val, operation_extra_size);
             }
-            
-            ret = msgpack_pack_object(mp_pck, kv->key);
-            if(ret < 0) { return ret; }
-            ret = msgpack_pack_object(mp_pck, kv->val);
-            if(ret < 0) { return ret; }
+            continue;
         }
-        return 0;
+        
+        ret = msgpack_pack_object(mp_pck, kv->key);
+        if(ret < 0) {
+            return ret;
+        }
+        ret = msgpack_pack_object(mp_pck, kv->val);
+        if(ret < 0) {
+            return ret;
+        }
     }
+
+    return 0;
 }
 static int stackdriver_format(struct flb_config *config,
                               struct flb_input_instance *ins,
@@ -617,7 +623,7 @@ static int stackdriver_format(struct flb_config *config,
         operation_last = false;
         operation_extra_size = 0;
         operation_extracted = extract_operation(&operation_id, &operation_producer,
-                              &operation_first, &operation_last, obj, &operation_extra_size);
+                                                &operation_first, &operation_last, obj, &operation_extra_size);
         
         if (operation_extracted) {
             entry_size += 1;
