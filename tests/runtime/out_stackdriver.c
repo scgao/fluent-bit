@@ -77,10 +77,6 @@ static int mp_kv_cmp(char *json_data, size_t json_len, char *key_accessor, char 
         flb_error("invalid record accessor key, aborting test");
         goto out;
     }
-
-    /* Process map using the record_accessor */
-    printf("size: %d", mk_list_size(&ra->list));
-    fflush(stdout);
     
     rval = flb_ra_get_value_object(ra, map);
     TEST_CHECK(rval != NULL);
@@ -93,6 +89,119 @@ static int mp_kv_cmp(char *json_data, size_t json_len, char *key_accessor, char 
     TEST_CHECK(rval->type == FLB_RA_STRING);
     if (strcmp(rval->val.string, val) == 0) {
         ret = FLB_TRUE;
+    }
+
+ out:
+    if (rval) {
+        flb_ra_key_value_destroy(rval);
+    }
+    if (ra) {
+        flb_ra_destroy(ra);
+    }
+    if (mp_buf) {
+        flb_free(mp_buf);
+    }
+    return ret;
+}
+
+static int mp_kv_cmp_boolean(char *json_data, size_t json_len, char *key_accessor, bool val)
+{
+    int ret;
+    int type;
+    char *mp_buf = NULL;
+    size_t mp_size;
+    size_t off = 0;
+    msgpack_object map;
+    msgpack_unpacked result;
+    struct flb_ra_value *rval = NULL;
+    struct flb_record_accessor *ra = NULL;
+
+    /* Convert JSON to msgpack */
+    ret = flb_pack_json((const char *) json_data, json_len, &mp_buf, &mp_size,
+                        &type);
+    TEST_CHECK(ret != -1);
+
+    /* Set return status */
+    ret = FLB_FALSE;
+
+    /* Unpack msgpack and reference the main 'map' */
+    msgpack_unpacked_init(&result);
+    ret = msgpack_unpack_next(&result, mp_buf, mp_size, &off);
+    TEST_CHECK(ret == MSGPACK_UNPACK_SUCCESS);
+    map = result.data;
+
+    /* Create a record_accessor context */
+    ra = flb_ra_create(key_accessor, FLB_TRUE);
+    if (!ra) {
+        flb_error("invalid record accessor key, aborting test");
+        goto out;
+    }
+    
+    rval = flb_ra_get_value_object(ra, map);
+    TEST_CHECK(rval != NULL);
+    msgpack_unpacked_destroy(&result);
+    if (!rval) {
+        goto out;
+    }
+
+    TEST_CHECK(rval->type == FLB_RA_BOOL);
+    if (rval->val.boolean == val) {
+        ret = FLB_TRUE;
+    }
+
+ out:
+    if (rval) {
+        flb_ra_key_value_destroy(rval);
+    }
+    if (ra) {
+        flb_ra_destroy(ra);
+    }
+    if (mp_buf) {
+        flb_free(mp_buf);
+    }
+    return ret;
+}
+
+static int mp_kv_exists(char *json_data, size_t json_len, char *key_accessor)
+{
+    int ret;
+    int type;
+    char *mp_buf = NULL;
+    size_t mp_size;
+    size_t off = 0;
+    msgpack_object map;
+    msgpack_unpacked result;
+    struct flb_ra_value *rval = NULL;
+    struct flb_record_accessor *ra = NULL;
+
+    /* Convert JSON to msgpack */
+    ret = flb_pack_json((const char *) json_data, json_len, &mp_buf, &mp_size,
+                        &type);
+    TEST_CHECK(ret != -1);
+
+    /* Set return status */
+    ret = FLB_FALSE;
+
+    /* Unpack msgpack and reference the main 'map' */
+    msgpack_unpacked_init(&result);
+    ret = msgpack_unpack_next(&result, mp_buf, mp_size, &off);
+    TEST_CHECK(ret == MSGPACK_UNPACK_SUCCESS);
+    map = result.data;
+
+    /* Create a record_accessor context */
+    ra = flb_ra_create(key_accessor, FLB_TRUE);
+    if (!ra) {
+        flb_error("invalid record accessor key, aborting test");
+        goto out;
+    }
+    
+    rval = flb_ra_get_value_object(ra, map);
+    msgpack_unpacked_destroy(&result);
+    if (rval) {
+        ret = FLB_TRUE;
+    }
+    else {
+        ret = FLB_FALSE;
     }
 
  out:
@@ -162,12 +271,16 @@ static void cb_check_operation_common_case(void *ctx, int ffd,
     TEST_CHECK(ret == FLB_TRUE);
 
     /* operation_first */
-    ret = mp_kv_cmp(res_data, res_size, "$entries[0]['operation']['first']", "true");
+    ret = mp_kv_cmp_boolean(res_data, res_size, "$entries[0]['operation']['first']", true);
     TEST_CHECK(ret == FLB_TRUE);
 
     /* operation_last */
-    ret = mp_kv_cmp(res_data, res_size, "$entries[0]['operation']['last']", "true");
+    ret = mp_kv_cmp_boolean(res_data, res_size, "$entries[0]['operation']['last']", true);
     TEST_CHECK(ret == FLB_TRUE);
+
+    /* check `operation` has been removed from jsonPayload */
+    ret = mp_kv_exists(res_data, res_size, "$entries[0]['jsonPayload']['operation']");
+    TEST_CHECK(ret == FLB_FALSE);
 
     flb_sds_destroy(res_data);
 }
