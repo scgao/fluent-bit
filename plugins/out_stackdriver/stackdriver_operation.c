@@ -79,10 +79,7 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
                 msgpack_object_kv* tmp_p = sub_field.via.map.ptr;
                 msgpack_object_kv* const tmp_pend = sub_field.via.map.ptr + sub_field.via.map.size;
 
-                /* Validate the subfields 
-                 * If there's an extra subfield, remain it in the jsonPayload
-                 * If one of the subfield is invalid, set it to default
-                 */
+                /* Validate the subfields of operation */
                 for (; tmp_p < tmp_pend; ++tmp_p) {
                     if (strncmp("id", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
                         if(tmp_p->val.type != MSGPACK_OBJECT_STR) {

@@ -613,6 +613,9 @@ static int stackdriver_format(struct flb_config *config,
         /* Extract operation */
         operation_id = flb_sds_create("");
         operation_producer = flb_sds_create("");
+        operation_first = false;
+        operation_last = false;
+        operation_extra_size = 0;
         operation_extracted = extract_operation(&operation_id, &operation_producer,
                               &operation_first, &operation_last, obj, &operation_extra_size);
         
