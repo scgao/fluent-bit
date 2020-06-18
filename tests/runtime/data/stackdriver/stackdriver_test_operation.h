@@ -24,18 +24,6 @@
     "\"logging.googleapis.com/operation\": \"some string\""		\
 	"}]"
 
-#define EMPTY_SUBFIELDS	"["		\
-	"1591111124,"			\
-	"{"				\
-        "\"logging.googleapis.com/operation\": "		\
-        "{"            \
-            "\"id\": \"\","          \
-            "\"producer\": \"\","      \
-            "\"first\": false,"      \
-            "\"last\": false"       \
-        "}"     \
-	"}]"
-
 #define PARTIAL_SUBFIELDS	"["		\
 	"1591111124,"			\
 	"{"				\

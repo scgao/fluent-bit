@@ -350,8 +350,8 @@ static void cb_check_operation_common_case(void *ctx, int ffd,
 }
 
 static void cb_check_empty_operation(void *ctx, int ffd,
-                                           int res_ret, void *res_data, size_t res_size,
-                                           void *data)
+                                     int res_ret, void *res_data, size_t res_size,
+                                     void *data)
 {
     int ret;
 
@@ -379,8 +379,8 @@ static void cb_check_empty_operation(void *ctx, int ffd,
 }
 
 static void cb_check_operation_in_string(void *ctx, int ffd,
-                                           int res_ret, void *res_data, size_t res_size,
-                                           void *data)
+                                         int res_ret, void *res_data, size_t res_size,
+                                         void *data)
 {
     int ret;
 
@@ -394,39 +394,10 @@ static void cb_check_operation_in_string(void *ctx, int ffd,
     flb_sds_destroy(res_data);
 }
 
-static void cb_check_operation_empty_subfields(void *ctx, int ffd,
-                                           int res_ret, void *res_data, size_t res_size,
-                                           void *data)
-{
-    int ret;
 
-    /* operation_id */
-    ret = mp_kv_cmp(res_data, res_size, "$entries[0]['operation']['id']", "");
-    TEST_CHECK(ret == FLB_TRUE);
-
-    /* operation_producer */
-    ret = mp_kv_cmp(res_data, res_size, "$entries[0]['operation']['producer']", "");
-    TEST_CHECK(ret == FLB_TRUE);
-
-    /* operation_first */
-    ret = mp_kv_cmp_boolean(res_data, res_size, "$entries[0]['operation']['first']", false);
-    TEST_CHECK(ret == FLB_TRUE);
-
-    /* operation_last */
-    ret = mp_kv_cmp_boolean(res_data, res_size, "$entries[0]['operation']['last']", false);
-    TEST_CHECK(ret == FLB_TRUE);
-
-    /* check `operation` has been removed from jsonPayload */
-    ret = mp_kv_exists(res_data, res_size, "$entries[0]['jsonPayload']['logging.googleapis.com/operation']");
-    TEST_CHECK(ret == FLB_FALSE);
-
-    flb_sds_destroy(res_data);
-}
-
-/* TODO: merge partial and empty? */
 static void cb_check_operation_partial_subfields(void *ctx, int ffd,
-                                           int res_ret, void *res_data, size_t res_size,
-                                           void *data)
+                                                 int res_ret, void *res_data, size_t res_size,
+                                                 void *data)
 {
     int ret;
 
@@ -454,8 +425,8 @@ static void cb_check_operation_partial_subfields(void *ctx, int ffd,
 }
 
 static void cb_check_operation_incorrect_type_subfields(void *ctx, int ffd,
-                                           int res_ret, void *res_data, size_t res_size,
-                                           void *data)
+                                                        int res_ret, void *res_data, size_t res_size,
+                                                        void *data)
 {
     int ret;
 
@@ -483,8 +454,8 @@ static void cb_check_operation_incorrect_type_subfields(void *ctx, int ffd,
 }
 
 static void cb_check_operation_extra_subfields(void *ctx, int ffd,
-                                           int res_ret, void *res_data, size_t res_size,
-                                           void *data)
+                                               int res_ret, void *res_data, size_t res_size,
+                                               void *data)
 {
     int ret;
 
@@ -718,46 +689,6 @@ void flb_test_operation_in_string()
     flb_destroy(ctx);
 }
 
-void flb_test_operation_empty_subfields()
-{
-    int ret;
-    int size = sizeof(EMPTY_SUBFIELDS) - 1;
-    flb_ctx_t *ctx;
-    int in_ffd;
-    int out_ffd;
-
-    /* Create context, flush every second (some checks omitted here) */
-    ctx = flb_create();
-    flb_service_set(ctx, "flush", "1", "grace", "1", NULL);
-
-    /* Lib input mode */
-    in_ffd = flb_input(ctx, (char *) "lib", NULL);
-    flb_input_set(ctx, in_ffd, "tag", "test", NULL);
-
-    /* Stackdriver output */
-    out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
-    flb_output_set(ctx, out_ffd,
-                   "match", "test",
-                   "resource", "gce_instance",
-                   NULL);
-
-    /* Enable test mode */
-    ret = flb_output_set_test(ctx, out_ffd, "formatter",
-                              cb_check_operation_empty_subfields,
-                              NULL);
-
-    /* Start */
-    ret = flb_start(ctx);
-    TEST_CHECK(ret == 0);
-
-    /* Ingest data sample */
-    flb_lib_push(ctx, in_ffd, (char *) EMPTY_SUBFIELDS, size);
-
-    sleep(2);
-    flb_stop(ctx);
-    flb_destroy(ctx);
-}
-
 void flb_test_operation_partial_subfields()
 {
     int ret;
@@ -880,12 +811,11 @@ void flb_test_operation_extra_subfields()
 
 /* Test list */
 TEST_LIST = {
-    {"resource_global"      , flb_test_resource_global },
+    {"resource_global", flb_test_resource_global },
     {"resource_gce_instance", flb_test_resource_gce_instance },
     {"operation_common_case", flb_test_operation_common},
     {"empty_operation", flb_test_empty_operation},
     {"operation_not_a_map", flb_test_operation_in_string},
-    {"operation_empty_subfields", flb_test_operation_empty_subfields},
     {"operation_partial_subfields", flb_test_operation_partial_subfields},
     {"operation_subfields_in_incorrect_type", flb_test_operation_incorrect_type_subfields},
     {"operation_extra_subfields_exist", flb_test_operation_extra_subfields},

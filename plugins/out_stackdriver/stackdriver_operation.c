@@ -25,23 +25,23 @@ typedef enum {
 
 
 void add_operation_field(flb_sds_t *operation_id, flb_sds_t *operation_producer, 
-                                bool *operation_first, bool *operation_last, 
-                                msgpack_packer *mp_pck)
+                         int *operation_first, int *operation_last, 
+                         msgpack_packer *mp_pck)
 {    
     msgpack_pack_str(mp_pck, 9);
     msgpack_pack_str_body(mp_pck, "operation", 9);
     msgpack_pack_map(mp_pck, 4);
     msgpack_pack_str(mp_pck, 2);
-    msgpack_pack_str_body(mp_pck,"id", 2);
+    msgpack_pack_str_body(mp_pck, "id", 2);
     msgpack_pack_str(mp_pck, flb_sds_len(*operation_id));
-    msgpack_pack_str_body(mp_pck,*operation_id, flb_sds_len(*operation_id));
+    msgpack_pack_str_body(mp_pck, *operation_id, flb_sds_len(*operation_id));
     msgpack_pack_str(mp_pck, 8);
-    msgpack_pack_str_body(mp_pck,"producer", 8);
+    msgpack_pack_str_body(mp_pck, "producer", 8);
     msgpack_pack_str(mp_pck, flb_sds_len(*operation_producer));
-    msgpack_pack_str_body(mp_pck,*operation_producer, flb_sds_len(*operation_producer));
+    msgpack_pack_str_body(mp_pck, *operation_producer, flb_sds_len(*operation_producer));
     msgpack_pack_str(mp_pck, 5);
-    msgpack_pack_str_body(mp_pck,"first", 5);
-    if (*operation_first == true) {
+    msgpack_pack_str_body(mp_pck, "first", 5);
+    if (*operation_first == FLB_TRUE) {
         msgpack_pack_true(mp_pck);
     }
     else {
@@ -49,8 +49,8 @@ void add_operation_field(flb_sds_t *operation_id, flb_sds_t *operation_producer,
     }
     
     msgpack_pack_str(mp_pck, 4);
-    msgpack_pack_str_body(mp_pck,"last", 4);
-    if (*operation_last == true) {
+    msgpack_pack_str_body(mp_pck, "last", 4);
+    if (*operation_last == FLB_TRUE) {
         msgpack_pack_true(mp_pck);
     }
     else {
@@ -59,54 +59,58 @@ void add_operation_field(flb_sds_t *operation_id, flb_sds_t *operation_producer,
 }
 
 /* Return true if operation extracted */
-bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer, 
-                              bool *operation_first, bool *operation_last, 
-                              msgpack_object *obj, int *extra_subfields)
+int extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer, 
+                      int *operation_first, int *operation_last, 
+                      msgpack_object *obj, int *extra_subfields)
 {
     operation_status op_status = NO_OPERATION;
 
     if (obj->via.map.size != 0) {    	
-        msgpack_object_kv* p = obj->via.map.ptr;
-        msgpack_object_kv* const pend = obj->via.map.ptr + obj->via.map.size;
+        msgpack_object_kv *p = obj->via.map.ptr;
+        msgpack_object_kv *const pend = obj->via.map.ptr + obj->via.map.size;
 
         for (; p < pend && op_status == NO_OPERATION; ++p) {
-            if (p->val.type == MSGPACK_OBJECT_MAP 
+            if (p->val.type == MSGPACK_OBJECT_MAP && p->key.type == MSGPACK_OBJECT_STR
                 && strncmp(OPERATION_FIELD_IN_JSON, p->key.via.str.ptr, p->key.via.str.size) == 0) {
                 
                 op_status = OPERATION_EXISTED;
                 msgpack_object sub_field = p->val;
                 
-                msgpack_object_kv* tmp_p = sub_field.via.map.ptr;
-                msgpack_object_kv* const tmp_pend = sub_field.via.map.ptr + sub_field.via.map.size;
+                msgpack_object_kv *tmp_p = sub_field.via.map.ptr;
+                msgpack_object_kv *const tmp_pend = sub_field.via.map.ptr + sub_field.via.map.size;
 
-                /* Validate the subfields 
-                 * If there's an extra subfield, remain it in the jsonPayload
-                 * If one of the subfield is invalid, set it to default
-                 */
+                /* Validate the subfields of operation */
                 for (; tmp_p < tmp_pend; ++tmp_p) {
+                    if (tmp_p->key.type != MSGPACK_OBJECT_STR) {
+                        continue;
+                    }
                     if (strncmp("id", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_STR) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_STR) {
                             continue;
                         }
                         *operation_id = flb_sds_copy(*operation_id, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                     }
                     else if (strncmp("producer", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_STR) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_STR) {
                             continue;
                         }
                         *operation_producer = flb_sds_copy(*operation_producer, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                     }
                     else if (strncmp("first", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_BOOLEAN) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_BOOLEAN) {
                             continue;
                         }
-                        *operation_first = tmp_p->val.via.boolean;
+                        if (tmp_p->val.via.boolean) {
+                            *operation_first = FLB_TRUE;
+                        }
                     }
                     else if (strncmp("last", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_BOOLEAN) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_BOOLEAN) {
                             continue;
                         }
-                        *operation_last = tmp_p->val.via.boolean;
+                        if (tmp_p->val.via.boolean) {
+                            *operation_last = FLB_TRUE;
+                        }
                     }
                     else {
                         /* extra sub-fields */ 
@@ -122,13 +126,13 @@ bool extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
 }
 
 void pack_extra_operation_subfields(msgpack_packer *mp_pck, msgpack_object *operation, int extra_subfields) {
+    msgpack_object_kv *p = operation->via.map.ptr;
+    msgpack_object_kv *const pend = operation->via.map.ptr + operation->via.map.size;
+
     msgpack_pack_map(mp_pck, extra_subfields);
 
-    msgpack_object_kv* p = operation->via.map.ptr;
-    msgpack_object_kv* const pend = operation->via.map.ptr + operation->via.map.size;
-
     for (; p < pend; ++p) {
-        if(strncmp("id", p->key.via.str.ptr, p->key.via.str.size) != 0 
+        if (strncmp("id", p->key.via.str.ptr, p->key.via.str.size) != 0 
             && strncmp("producer", p->key.via.str.ptr, p->key.via.str.size) != 0
             && strncmp("first", p->key.via.str.ptr, p->key.via.str.size) != 0
             && strncmp("last", p->key.via.str.ptr, p->key.via.str.size) != 0) {
