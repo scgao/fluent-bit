@@ -36,6 +36,16 @@
         "}"     \
 	"}]"
 
+#define PARTIAL_SUBFIELDS	"["		\
+	"1591111124,"			\
+	"{"				\
+        "\"logging.googleapis.com/operation\": "		\
+        "{"            \
+            "\"first\": false,"      \
+            "\"last\": false"       \
+        "}"     \
+	"}]"
+
 #define SUBFIELDS_IN_INCORRECT_TYPE	"["		\
 	"1591111124,"			\
 	"{"				\
@@ -57,14 +67,10 @@
             "\"producer\": \"test_producer\","      \
             "\"first\": true,"      \
             "\"last\": true,"       \
-            "\"extra_key1\": \"test_id\","          \
+            "\"extra_key1\": \"extra_val1\","          \
             "\"extra_key2\": 123,"      \
             "\"extra_key3\": true"          \
         "}"     \
 	"}]"
-
-
-
-
 
 
