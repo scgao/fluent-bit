@@ -511,22 +511,14 @@ static void cb_check_empty_insertId(void *ctx, int ffd,
                                     int res_ret, void *res_data, size_t res_size,
                                     void *data)
 {
-    int ret;
-
-    /* insertId in the entries */
-    ret = mp_kv_cmp(res_data, res_size, "$entries[0]['insertId']", "");
-    TEST_CHECK(ret == FLB_TRUE);
-
-    /* insertId has been removed from jsonPayload */
-    ret = mp_kv_exists(res_data, res_size, "$entries[0]['jsonPayload']['logging.googleapis.com/insertId']");
-    TEST_CHECK(ret == FLB_FALSE);
+    TEST_CHECK(res_size == 0);
 
     flb_sds_destroy(res_data);
 }
 
 static void cb_check_insertId_incorrect_type(void *ctx, int ffd,
-                                                 int res_ret, void *res_data, size_t res_size,
-                                                 void *data)
+                                             int res_ret, void *res_data, size_t res_size,
+                                             void *data)
 {
     TEST_CHECK(res_size == 0);
 
@@ -1133,7 +1125,7 @@ void flb_test_insertId_incorrect_type()
 
     /* Enable test mode */
     ret = flb_output_set_test(ctx, out_ffd, "formatter",
-                              cb_check_insertId_incorrect_type_int,
+                              cb_check_insertId_incorrect_type,
                               NULL);
 
     /* Start */
