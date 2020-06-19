@@ -20,7 +20,7 @@
 	"1591111124,"			\
 	"{"				\
         "\"logging.googleapis.com/insertId\": "		\
-        "{"            \       
+        "{"           \       
         "}"     \
 	"}]"
 

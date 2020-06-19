@@ -39,7 +39,7 @@
 	"{"				\
         "\"logging.googleapis.com/sourceLocation\": "		\
         "{"            \
-            "\"function\": \"test_function\""
+            "\"function\": \"test_function\""   \
         "}"     \
 	"}]"
 
@@ -50,14 +50,14 @@
         "{"            \
             "\"file\": 123,"          \
             "\"line\": \"some string\","      \
-            "\"function\": true      \
+            "\"function\": true"      \
         "}"     \
 	"}]"
 
 #define SOURCELOCATION_EXTRA_SUBFIELDS_EXISTED	"["		\
 	"1591111124,"			\
 	"{"				\
-        "\"logging.googleapis.com/operation\": "		\
+        "\"logging.googleapis.com/sourceLocation\": "		\
         "{"            \
             "\"file\": \"test_file\","          \
             "\"line\": 123,"      \
