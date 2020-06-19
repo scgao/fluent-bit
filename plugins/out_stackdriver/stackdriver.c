@@ -448,6 +448,34 @@ static int get_severity_level(severity_t * s, const msgpack_object * o,
     return -1;
 }
 
+static void validate_insertId(msgpack_object * subobj, const msgpack_object * o, insertId_status *status)
+{
+    int i = 0;
+    msgpack_object_kv * p = NULL;
+    *status = INSERTID_NOT_EXISTED;
+
+    if (o == NULL || subobj == NULL) {
+        return;
+    }
+
+    for (i = 0; i < o->via.map.size; i++) {
+        p = &o->via.map.ptr[i];
+        if (p->key.type != MSGPACK_OBJECT_STR) {
+            continue;
+        }
+        if (strncmp(INSERTID_IN_JSON, p->key.via.str.ptr, p->key.via.str.size) == 0) {
+            if (p->val.type == MSGPACK_OBJECT_STR && p->val.via.str.size > 0) {
+                *subobj = p->val;
+                *status = INSERTID_VALID;
+            }
+            else {
+                *status = INSERTID_INVALID;
+            }
+            break;
+        }
+    }
+}
+
 static int pack_json_payload(int insertId_extracted, int operation_extracted, int operation_extra_size, 
                              int sourceLocation_extracted, int sourceLocation_extra_size, 
                              msgpack_packer* mp_pck, msgpack_object *obj)
@@ -541,7 +569,7 @@ static int stackdriver_format(struct flb_config *config,
 
     /* Parameters for insertId */
     msgpack_object insertId_obj;
-    flb_sds_t insertId_key = flb_sds_create(INSERTID_IN_JSON);
+    insertId_status in_status;
     int insertId_extracted = FLB_FALSE;
 
     /* Parameters for Operation */
@@ -652,9 +680,20 @@ static int stackdriver_format(struct flb_config *config,
         }
 
         /* Extract insertId */
-        if (get_msgpack_obj(&insertId_obj, obj, insertId_key, flb_sds_len(insertId_key), MSGPACK_OBJECT_STR) == 0) {
+        validate_insertId(&insertId_obj, obj, &in_status);
+        if (in_status == INSERTID_VALID) {
             insertId_extracted = FLB_TRUE;
             entry_size += 1;
+        }
+        else if (in_status == INSERTID_NOT_EXISTED) {
+            insertId_extracted = FLB_FALSE;
+        }
+        else {
+            msgpack_sbuffer_destroy(&mp_sbuf);
+            msgpack_unpacked_destroy(&result);
+            flb_error("Incorrect insertId received. InsertId should be an non-empty string.");
+            *out_size = 0;
+            return -1;
         }
 
         /* Extract operation */
@@ -746,8 +785,6 @@ static int stackdriver_format(struct flb_config *config,
         msgpack_pack_str(&mp_pck, s);
         msgpack_pack_str_body(&mp_pck, time_formatted, s);
     }
-
-    flb_sds_destroy(insertId_key);
 
     /* Convert from msgpack to JSON */
     out_buf = flb_msgpack_raw_to_json_sds(mp_sbuf.data, mp_sbuf.size);

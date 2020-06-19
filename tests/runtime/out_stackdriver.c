@@ -524,36 +524,11 @@ static void cb_check_empty_insertId(void *ctx, int ffd,
     flb_sds_destroy(res_data);
 }
 
-static void cb_check_insertId_incorrect_type_int(void *ctx, int ffd,
+static void cb_check_insertId_incorrect_type(void *ctx, int ffd,
                                                  int res_ret, void *res_data, size_t res_size,
                                                  void *data)
 {
-    int ret;
-
-    /* insertId is not lifted to the entries */
-    ret = mp_kv_exists(res_data, res_size, "$entries[0]['insertId']");
-    TEST_CHECK(ret == FLB_FALSE);
-
-    /* insertId remains in jsonPayload */
-    ret = mp_kv_cmp_integer(res_data, res_size, "$entries[0]['jsonPayload']['logging.googleapis.com/insertId']", 123);
-    TEST_CHECK(ret == FLB_TRUE);
-
-    flb_sds_destroy(res_data);
-}
-
-static void cb_check_insertId_incorrect_type_map(void *ctx, int ffd,
-                                                 int res_ret, void *res_data, size_t res_size,
-                                                 void *data)
-{
-    int ret;
-
-    /* insertId is not lifted to the entries */
-    ret = mp_kv_exists(res_data, res_size, "$entries[0]['insertId']");
-    TEST_CHECK(ret == FLB_FALSE);
-
-    /* insertId remains in jsonPayload */
-    ret = mp_kv_exists(res_data, res_size, "$entries[0]['jsonPayload']['logging.googleapis.com/insertId']");
-    TEST_CHECK(ret == FLB_TRUE);
+    TEST_CHECK(res_size == 0);
 
     flb_sds_destroy(res_data);
 }
@@ -1133,7 +1108,7 @@ void flb_test_empty_insertId()
     flb_destroy(ctx);
 }
 
-void flb_test_insertId_incorrect_type_int()
+void flb_test_insertId_incorrect_type()
 {
     int ret;
     int size = sizeof(INSERTID_INCORRECT_TYPE_INT) - 1;
@@ -1167,46 +1142,6 @@ void flb_test_insertId_incorrect_type_int()
 
     /* Ingest data sample */
     flb_lib_push(ctx, in_ffd, (char *) INSERTID_INCORRECT_TYPE_INT, size);
-
-    sleep(2);
-    flb_stop(ctx);
-    flb_destroy(ctx);
-}
-
-void flb_test_insertId_incorrect_type_map()
-{
-    int ret;
-    int size = sizeof(INSERTID_INCORRECT_TYPE_MAP) - 1;
-    flb_ctx_t *ctx;
-    int in_ffd;
-    int out_ffd;
-
-    /* Create context, flush every second (some checks omitted here) */
-    ctx = flb_create();
-    flb_service_set(ctx, "flush", "1", "grace", "1", NULL);
-
-    /* Lib input mode */
-    in_ffd = flb_input(ctx, (char *) "lib", NULL);
-    flb_input_set(ctx, in_ffd, "tag", "test", NULL);
-
-    /* Stackdriver output */
-    out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
-    flb_output_set(ctx, out_ffd,
-                   "match", "test",
-                   "resource", "gce_instance",
-                   NULL);
-
-    /* Enable test mode */
-    ret = flb_output_set_test(ctx, out_ffd, "formatter",
-                              cb_check_insertId_incorrect_type_map,
-                              NULL);
-
-    /* Start */
-    ret = flb_start(ctx);
-    TEST_CHECK(ret == 0);
-
-    /* Ingest data sample */
-    flb_lib_push(ctx, in_ffd, (char *) INSERTID_INCORRECT_TYPE_MAP, size);
 
     sleep(2);
     flb_stop(ctx);
@@ -1509,8 +1444,7 @@ TEST_LIST = {
     /* test insertId */
     {"insertId_common_case", flb_test_insertId_common_case},
     {"empty_insertId", flb_test_empty_insertId},
-    {"insertId_incorrect_type_int", flb_test_insertId_incorrect_type_int},
-    {"insertId_incorrect_type_map", flb_test_insertId_incorrect_type_map},
+    {"insertId_incorrect_type_int", flb_test_insertId_incorrect_type},
 
     /* test sourceLocation */
     {"sourceLocation_common_case", flb_test_sourceLocation_common_case},
