@@ -25,8 +25,8 @@
 void add_sourceLocation_field(flb_sds_t *sourceLocation_file, int64_t sourceLocation_line,
                               flb_sds_t *sourceLocation_function, msgpack_packer *mp_pck);
 
-bool extract_sourceLocation(flb_sds_t *sourceLocation_file, int64_t *sourceLocation_line,
-                              flb_sds_t *sourceLocation_function, msgpack_object *obj, int *extra_subfields);
+int extract_sourceLocation(flb_sds_t *sourceLocation_file, int64_t *sourceLocation_line,
+                           flb_sds_t *sourceLocation_function, msgpack_object *obj, int *extra_subfields);
 
 void pack_extra_sourceLocation_subfields(msgpack_packer *mp_pck, msgpack_object *sourceLocation, int extra_subfields);
 

@@ -448,19 +448,23 @@ static int get_severity_level(severity_t * s, const msgpack_object * o,
     return -1;
 }
 
-static int pack_json_payload(bool insertId_extracted, int operation_extracted, int operation_extra_size, 
-                            bool sourceLocation_extracted, int sourceLocation_extra_size, 
-                            msgpack_packer* mp_pck, msgpack_object *obj)
+static int pack_json_payload(int insertId_extracted, int operation_extracted, int operation_extra_size, 
+                             int sourceLocation_extracted, int sourceLocation_extra_size, 
+                             msgpack_packer* mp_pck, msgpack_object *obj)
 {
     /* Specified fields include operation, sourceLocation ... */
     int to_remove = 0;
-    if(insertId_extracted) {
+    int ret;
+    msgpack_object_kv *kv = obj->via.map.ptr;
+    msgpack_object_kv *const kvend = obj->via.map.ptr + obj->via.map.size;
+
+    if(insertId_extracted == FLB_TRUE) {
         to_remove += 1;
     }
     if(operation_extracted == FLB_TRUE && operation_extra_size == 0) {
         to_remove += 1;
     }
-    if(sourceLocation_extracted && sourceLocation_extra_size == 0) {
+    if(sourceLocation_extracted == FLB_TRUE && sourceLocation_extra_size == 0) {
         to_remove += 1;
     }
 
@@ -469,11 +473,8 @@ static int pack_json_payload(bool insertId_extracted, int operation_extracted, i
         return ret;
     }
 
-    msgpack_object_kv* kv = obj->via.map.ptr;
-    msgpack_object_kv* const kvend = obj->via.map.ptr + obj->via.map.size;
-
     for(; kv != kvend; ++kv	) {
-        if (insertId_extracted && strncmp(INSERTID_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
+        if (insertId_extracted == FLB_TRUE && strncmp(INSERTID_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
             && kv->val.type == MSGPACK_OBJECT_STR) {
             continue;
         }
@@ -540,8 +541,8 @@ static int stackdriver_format(struct flb_config *config,
 
     /* Parameters for insertId */
     msgpack_object insertId_obj;
-    flb_sds_t insertId_key;
-    bool insertId_extracted = false;
+    flb_sds_t insertId_key = flb_sds_create(INSERTID_IN_JSON);
+    int insertId_extracted = FLB_FALSE;
 
     /* Parameters for Operation */
     flb_sds_t operation_id;
@@ -555,7 +556,7 @@ static int stackdriver_format(struct flb_config *config,
     flb_sds_t sourceLocation_file;
     int64_t sourceLocation_line = 0;
     flb_sds_t sourceLocation_function;
-    bool sourceLocation_extracted = false;
+    int sourceLocation_extracted = FLB_FALSE;
     int sourceLocation_extra_size = 0;
 
     /* Count number of records */
@@ -651,9 +652,8 @@ static int stackdriver_format(struct flb_config *config,
         }
 
         /* Extract insertId */
-        insertId_key = flb_sds_create(INSERTID_IN_JSON);
         if (get_msgpack_obj(&insertId_obj, obj, insertId_key, flb_sds_len(insertId_key), MSGPACK_OBJECT_STR) == 0) {
-            insertId_extracted = true;
+            insertId_extracted = FLB_TRUE;
             entry_size += 1;
         }
 
@@ -676,9 +676,9 @@ static int stackdriver_format(struct flb_config *config,
         sourceLocation_line = 0;
         sourceLocation_extra_size = 0;
         sourceLocation_extracted = extract_sourceLocation(&sourceLocation_file, &sourceLocation_line,
-                              &sourceLocation_function, obj, &sourceLocation_extra_size);
+                                                          &sourceLocation_function, obj, &sourceLocation_extra_size);
         
-        if (sourceLocation_extracted) {
+        if (sourceLocation_extracted == FLB_TRUE) {
             entry_size += 1;
         }
 
@@ -692,7 +692,7 @@ static int stackdriver_format(struct flb_config *config,
         }
 
         /* Add insertId field into the log entry */
-        if (insertId_extracted) {
+        if (insertId_extracted == FLB_TRUE) {
             msgpack_pack_str(&mp_pck, 8);
             msgpack_pack_str_body(&mp_pck, "insertId", 8);
             msgpack_pack_object(&mp_pck, insertId_obj);
@@ -705,13 +705,12 @@ static int stackdriver_format(struct flb_config *config,
         }
 
         /* Add sourceLocation field into the log entry */
-        if (sourceLocation_extracted) {
+        if (sourceLocation_extracted == FLB_TRUE) {
             add_sourceLocation_field(&sourceLocation_file, sourceLocation_line, 
-                                &sourceLocation_function, &mp_pck);
+                                     &sourceLocation_function, &mp_pck);
         }
         
         /* Clean up */
-        flb_sds_destroy(insertId_key);
         flb_sds_destroy(operation_id);
         flb_sds_destroy(operation_producer);
         flb_sds_destroy(sourceLocation_file);
@@ -747,6 +746,8 @@ static int stackdriver_format(struct flb_config *config,
         msgpack_pack_str(&mp_pck, s);
         msgpack_pack_str_body(&mp_pck, time_formatted, s);
     }
+
+    flb_sds_destroy(insertId_key);
 
     /* Convert from msgpack to JSON */
     out_buf = flb_msgpack_raw_to_json_sds(mp_sbuf.data, mp_sbuf.size);

@@ -25,36 +25,36 @@ typedef enum {
 
 
 void add_sourceLocation_field(flb_sds_t *sourceLocation_file, int64_t sourceLocation_line, 
-                                flb_sds_t *sourceLocation_function, msgpack_packer *mp_pck)
+                              flb_sds_t *sourceLocation_function, msgpack_packer *mp_pck)
 {    
     msgpack_pack_str(mp_pck, 14);
     msgpack_pack_str_body(mp_pck, "sourceLocation", 14);
     msgpack_pack_map(mp_pck, 3);
 
     msgpack_pack_str(mp_pck, 4);
-    msgpack_pack_str_body(mp_pck,"file", 4);
+    msgpack_pack_str_body(mp_pck, "file", 4);
     msgpack_pack_str(mp_pck, flb_sds_len(*sourceLocation_file));
-    msgpack_pack_str_body(mp_pck,*sourceLocation_file, flb_sds_len(*sourceLocation_file));
+    msgpack_pack_str_body(mp_pck, *sourceLocation_file, flb_sds_len(*sourceLocation_file));
 
     msgpack_pack_str(mp_pck, 4);
-    msgpack_pack_str_body(mp_pck,"line", 4);
+    msgpack_pack_str_body(mp_pck, "line", 4);
     msgpack_pack_int64(mp_pck, sourceLocation_line);
 
     msgpack_pack_str(mp_pck, 8);
-    msgpack_pack_str_body(mp_pck,"function", 8);
+    msgpack_pack_str_body(mp_pck, "function", 8);
     msgpack_pack_str(mp_pck, flb_sds_len(*sourceLocation_function));
-    msgpack_pack_str_body(mp_pck,*sourceLocation_function, flb_sds_len(*sourceLocation_function));
+    msgpack_pack_str_body(mp_pck, *sourceLocation_function, flb_sds_len(*sourceLocation_function));
 }
 
-/* Return true if sourceLocation extracted */
-bool extract_sourceLocation(flb_sds_t *sourceLocation_file, int64_t *sourceLocation_line,
-                              flb_sds_t *sourceLocation_function, msgpack_object *obj, int *extra_subfields)
+/* Return FLB_TRUE if sourceLocation extracted */
+int extract_sourceLocation(flb_sds_t *sourceLocation_file, int64_t *sourceLocation_line,
+                           flb_sds_t *sourceLocation_function, msgpack_object *obj, int *extra_subfields)
 {
     sourceLocation_status op_status = NO_SOURCELOCATION;
 
     if (obj->via.map.size != 0) {    	
-        msgpack_object_kv* p = obj->via.map.ptr;
-        msgpack_object_kv* const pend = obj->via.map.ptr + obj->via.map.size;
+        msgpack_object_kv *p = obj->via.map.ptr;
+        msgpack_object_kv *const pend = obj->via.map.ptr + obj->via.map.size;
 
         for (; p < pend && op_status == NO_SOURCELOCATION; ++p) {
             if (p->val.type == MSGPACK_OBJECT_MAP 
@@ -63,11 +63,14 @@ bool extract_sourceLocation(flb_sds_t *sourceLocation_file, int64_t *sourceLocat
                 op_status = SOURCELOCATION_EXISTED;
                 msgpack_object sub_field = p->val;
                 
-                msgpack_object_kv* tmp_p = sub_field.via.map.ptr;
-                msgpack_object_kv* const tmp_pend = sub_field.via.map.ptr + sub_field.via.map.size;
+                msgpack_object_kv *tmp_p = sub_field.via.map.ptr;
+                msgpack_object_kv *const tmp_pend = sub_field.via.map.ptr + sub_field.via.map.size;
 
                 /* Validate the subfields of sourceLocation */
                 for (; tmp_p < tmp_pend; ++tmp_p) {
+                    if (tmp_p->key.type != MSGPACK_OBJECT_STR) {
+                        continue;
+                    }
                     if (strncmp("file", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
                         if(tmp_p->val.type != MSGPACK_OBJECT_STR) {
                             continue;
@@ -102,10 +105,10 @@ bool extract_sourceLocation(flb_sds_t *sourceLocation_file, int64_t *sourceLocat
 }
 
 void pack_extra_sourceLocation_subfields(msgpack_packer *mp_pck, msgpack_object *sourceLocation, int extra_subfields) {
+    msgpack_object_kv *p = sourceLocation->via.map.ptr;
+    msgpack_object_kv *const pend = sourceLocation->via.map.ptr + sourceLocation->via.map.size;
+    
     msgpack_pack_map(mp_pck, extra_subfields);
-
-    msgpack_object_kv* p = sourceLocation->via.map.ptr;
-    msgpack_object_kv* const pend = sourceLocation->via.map.ptr + sourceLocation->via.map.size;
 
     for (; p < pend; ++p) {
         if(strncmp("file", p->key.via.str.ptr, p->key.via.str.size) != 0 
