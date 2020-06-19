@@ -320,11 +320,14 @@ static int cb_stackdriver_init(struct flb_output_instance *ins,
     ctx->u->flags &= ~FLB_IO_ASYNC;
     ctx->metadata_u->flags &= ~FLB_IO_ASYNC;
 
-    /* Retrieve oauth2 token */
-    token = get_google_token(ctx);
-    if (!token) {
-        flb_plg_warn(ctx->ins, "token retrieval failed");
+    if (ins->test_mode == FLB_FALSE) {
+        /* Retrieve oauth2 token */
+        token = get_google_token(ctx);
+        if (!token) {
+            flb_plg_warn(ctx->ins, "token retrieval failed");
+        }
     }
+
     if (ctx->metadata_server_auth) {
         ret = gce_metadata_read_project_id(ctx);
         if (ret == -1) {
@@ -445,7 +448,7 @@ static int get_severity_level(severity_t * s, const msgpack_object * o,
     return -1;
 }
 
-static int pack_json_payload(bool insertId_extracted, bool operation_extracted, int operation_extra_size, 
+static int pack_json_payload(bool insertId_extracted, int operation_extracted, int operation_extra_size, 
                             bool sourceLocation_extracted, int sourceLocation_extra_size, 
                             msgpack_packer* mp_pck, msgpack_object *obj)
 {
@@ -454,59 +457,65 @@ static int pack_json_payload(bool insertId_extracted, bool operation_extracted, 
     if(insertId_extracted) {
         to_remove += 1;
     }
-    if(operation_extracted && operation_extra_size == 0) {
+    if(operation_extracted == FLB_TRUE && operation_extra_size == 0) {
         to_remove += 1;
     }
     if(sourceLocation_extracted && sourceLocation_extra_size == 0) {
         to_remove += 1;
     }
 
-    int ret = msgpack_pack_map(mp_pck, obj->via.map.size - to_remove);
-    if(ret < 0) {
+    ret = msgpack_pack_map(mp_pck, obj->via.map.size - to_remove);
+    if (ret < 0) {
         return ret;
     }
-    else {
-        msgpack_object_kv* kv = obj->via.map.ptr;
-        msgpack_object_kv* const kvend = obj->via.map.ptr + obj->via.map.size;
-        for(; kv != kvend; ++kv) {
-            if (insertId_extracted && strncmp(INSERTID_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
-                && kv->val.type == MSGPACK_OBJECT_STR) {
-                continue;
-            }
 
-            if (strncmp(OPERATION_FIELD_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
-                && kv->val.type == MSGPACK_OBJECT_MAP) {
+    msgpack_object_kv* kv = obj->via.map.ptr;
+    msgpack_object_kv* const kvend = obj->via.map.ptr + obj->via.map.size;
 
-                if(operation_extra_size > 0) {
-                    msgpack_pack_object(mp_pck, kv->key);
-                    pack_extra_operation_subfields(mp_pck, &kv->val, operation_extra_size);
-                }
-                continue;
-            }
-
-            if (strncmp(SOURCELOCATION_FIELD_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
-                && kv->val.type == MSGPACK_OBJECT_MAP) {
-
-                if(sourceLocation_extra_size > 0) {
-                    msgpack_pack_object(mp_pck, kv->key);
-                    pack_extra_sourceLocation_subfields(mp_pck, &kv->val, sourceLocation_extra_size);
-                }
-                continue;
-            }
-            
-            ret = msgpack_pack_object(mp_pck, kv->key);
-            if(ret < 0) { return ret; }
-            ret = msgpack_pack_object(mp_pck, kv->val);
-            if(ret < 0) { return ret; }
+    for(; kv != kvend; ++kv	) {
+        if (insertId_extracted && strncmp(INSERTID_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
+            && kv->val.type == MSGPACK_OBJECT_STR) {
+            continue;
         }
-        return 0;
-    }
-}
 
-static int stackdriver_format(const void *data, size_t bytes,
-                              const char *tag, size_t tag_len,
-                              char **out_data, size_t *out_size,
-                              struct flb_stackdriver *ctx)
+        if (strncmp(OPERATION_FIELD_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
+            && kv->val.type == MSGPACK_OBJECT_MAP) {
+
+            if (operation_extra_size > 0) {
+                msgpack_pack_object(mp_pck, kv->key);
+                pack_extra_operation_subfields(mp_pck, &kv->val, operation_extra_size);
+            }
+            continue;
+        }
+
+        if (strncmp(SOURCELOCATION_FIELD_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
+            && kv->val.type == MSGPACK_OBJECT_MAP) {
+
+            if(sourceLocation_extra_size > 0) {
+                msgpack_pack_object(mp_pck, kv->key);
+                pack_extra_sourceLocation_subfields(mp_pck, &kv->val, sourceLocation_extra_size);
+            }
+            continue;
+        }
+        
+        ret = msgpack_pack_object(mp_pck, kv->key);
+        if (ret < 0) {
+            return ret;
+        }
+        ret = msgpack_pack_object(mp_pck, kv->val);
+        if (ret < 0) {
+            return ret;
+        }
+    }
+
+    return 0;
+}
+static int stackdriver_format(struct flb_config *config,
+                              struct flb_input_instance *ins,
+                              void *plugin_context,
+                              const char *tag, int tag_len,
+                              const void *data, size_t bytes,
+                              void **out_data, size_t *out_size)
 {
     int len;
     int array_size = 0;
@@ -523,9 +532,10 @@ static int stackdriver_format(const void *data, size_t bytes,
     msgpack_sbuffer mp_sbuf;
     msgpack_packer mp_pck;
     flb_sds_t out_buf;
+    struct flb_stackdriver *ctx = plugin_context;
 
-    /* Parameters for severity */
-    bool severity_extracted = false;
+    /* Parameters in severity */
+    int severity_extracted = FLB_FALSE;
     severity_t severity;
 
     /* Parameters for insertId */
@@ -536,9 +546,9 @@ static int stackdriver_format(const void *data, size_t bytes,
     /* Parameters for Operation */
     flb_sds_t operation_id;
     flb_sds_t operation_producer;
-    bool operation_first = false;
-    bool operation_last = false;
-    bool operation_extracted = false;
+    int operation_first = FLB_FALSE;
+    int operation_last = FLB_FALSE;
+    int operation_extracted = FLB_FALSE;
     int operation_extra_size = 0;
 
     /* Parameters for sourceLocation */
@@ -636,7 +646,7 @@ static int stackdriver_format(const void *data, size_t bytes,
         /* Extract severity */
          if (ctx->severity_key
             && get_severity_level(&severity, obj, ctx->severity_key) == 0) {
-            severity_extracted = true;
+            severity_extracted = FLB_TRUE;
             entry_size += 1;
         }
 
@@ -650,12 +660,13 @@ static int stackdriver_format(const void *data, size_t bytes,
         /* Extract operation */
         operation_id = flb_sds_create("");
         operation_producer = flb_sds_create("");
-        operation_first = false;
-        operation_last = false;
+        operation_first = FLB_FALSE;
+        operation_last = FLB_FALSE;
         operation_extra_size = 0;
         operation_extracted = extract_operation(&operation_id, &operation_producer,
-                              &operation_first, &operation_last, obj, &operation_extra_size);
-        if (operation_extracted) {
+                                                &operation_first, &operation_last, obj, &operation_extra_size);
+        
+        if (operation_extracted == FLB_TRUE) {
             entry_size += 1;
         }
 
@@ -674,7 +685,7 @@ static int stackdriver_format(const void *data, size_t bytes,
         msgpack_pack_map(&mp_pck, entry_size);
         
         /* Add severity into the log entry */
-        if (severity_extracted) {
+        if (severity_extracted == FLB_TRUE) {
             msgpack_pack_str(&mp_pck, 8);
             msgpack_pack_str_body(&mp_pck, "severity", 8);
             msgpack_pack_int(&mp_pck, severity);
@@ -688,7 +699,7 @@ static int stackdriver_format(const void *data, size_t bytes,
         }
 
         /* Add operation field into the log entry */
-        if (operation_extracted) {
+        if (operation_extracted == FLB_TRUE) {
             add_operation_field(&operation_id, &operation_producer,
                                 &operation_first, &operation_last, &mp_pck);
         }
@@ -778,6 +789,8 @@ static void cb_stackdriver_flush(const void *data, size_t bytes,
     char *token;
     flb_sds_t payload_buf;
     size_t payload_size;
+    void *out_buf;
+    size_t out_size;
     struct flb_stackdriver *ctx = out_context;
     struct flb_upstream_conn *u_conn;
     struct flb_http_client *c;
@@ -789,13 +802,18 @@ static void cb_stackdriver_flush(const void *data, size_t bytes,
     }
 
     /* Reformat msgpack to stackdriver JSON payload */
-    ret = stackdriver_format(data, bytes, tag, tag_len,
-                             &payload_buf, &payload_size, ctx);
-    
+    ret = stackdriver_format(config, i_ins,
+                             ctx,
+                             tag, tag_len,
+                             data, bytes,
+                             &out_buf, &out_size);
     if (ret != 0) {
         flb_upstream_conn_release(u_conn);
         FLB_OUTPUT_RETURN(FLB_RETRY);
     }
+
+    payload_buf = (flb_sds_t) out_buf;
+    payload_size = out_size;
 
     /* Get or renew Token */
     token = get_google_token(ctx);
@@ -873,6 +891,9 @@ struct flb_output_plugin out_stackdriver_plugin = {
     .cb_init      = cb_stackdriver_init,
     .cb_flush     = cb_stackdriver_flush,
     .cb_exit      = cb_stackdriver_exit,
+
+    /* Test */
+    .test_formatter.callback = stackdriver_format,
 
     /* Plugin flags */
     .flags          = FLB_OUTPUT_NET | FLB_IO_TLS,
