@@ -66,7 +66,7 @@
             "\"cacheLookup\": \"some string\","      \
             "\"cacheHit\": 123,"      \
             "\"cacheValidatedWithOriginServer\": 123"      \
-        "}"     \\
+        "}"     \
 	"}]"
 
 #define HTTPREQUEST_EXTRA_SUBFIELDS_EXISTED	"["		\
@@ -130,6 +130,33 @@
         "\"logging.googleapis.com/http_request\": "		\
         "{"            \
             "\"latency\": \"0.1000000000s\""      \
+        "}"     \
+	"}]"
+
+#define HTTPREQUEST_LATENCY_INVALID_SPACES	"["		\
+	"1591111124,"			\
+	"{"				\
+        "\"logging.googleapis.com/http_request\": "		\
+        "{"            \
+            "\"latency\": \"  100. 00  s  \""      \
+        "}"     \
+	"}]"
+
+#define HTTPREQUEST_LATENCY_INVALID_STRING	"["		\
+	"1591111124,"			\
+	"{"				\
+        "\"logging.googleapis.com/http_request\": "		\
+        "{"            \
+            "\"latency\": \"  s100.00  s  \""      \
+        "}"     \
+	"}]"
+
+#define HTTPREQUEST_LATENCY_INVALID_END	"["		\
+	"1591111124,"			\
+	"{"				\
+        "\"logging.googleapis.com/http_request\": "		\
+        "{"            \
+            "\"latency\": \"  100.00    \""      \
         "}"     \
 	"}]"
 
