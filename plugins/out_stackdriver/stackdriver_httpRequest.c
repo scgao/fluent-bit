@@ -174,9 +174,8 @@ static void validate_latency(msgpack_object_str latency_in_payload, struct httpR
     regcomp(&reg, pattern, REG_EXTENDED);
     status = regexec(&reg, latency, nm, pmatch, 0);
 
-    //TODO: delete printf
-    printf("status: %d\n", status);
-    fflush(stdout);
+    flb_sds_destroy(latency);
+    regfree(&reg);
 
     if (status != REG_NOMATCH) {
         for (; i < latency_in_payload.size; ++ i) {
@@ -187,8 +186,6 @@ static void validate_latency(msgpack_object_str latency_in_payload, struct httpR
         }
         http_request->latency = flb_sds_copy(http_request->latency, tmp, j);
     }
-
-    regfree(&reg);
 }
 
 /* Return true if httpRequest extracted */
