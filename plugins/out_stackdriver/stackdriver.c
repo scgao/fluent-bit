@@ -479,7 +479,7 @@ static void validate_insertId(msgpack_object * subobj, const msgpack_object * o,
 
 static int pack_json_payload(int insertId_extracted, int operation_extracted, int operation_extra_size, 
                              int sourceLocation_extracted, int sourceLocation_extra_size,
-                             bool httpRequest_extracted, int httpRequest_extra_size, 
+                             int httpRequest_extracted, int httpRequest_extra_size, 
                              msgpack_packer* mp_pck, msgpack_object *obj)
 {
     /* Specified fields include operation, sourceLocation ... */
@@ -497,7 +497,7 @@ static int pack_json_payload(int insertId_extracted, int operation_extracted, in
     if(sourceLocation_extracted == FLB_TRUE && sourceLocation_extra_size == 0) {
         to_remove += 1;
     }
-    if(httpRequest_extracted && httpRequest_extra_size == 0) {
+    if(httpRequest_extracted == FLB_TRUE && httpRequest_extra_size == 0) {
         to_remove += 1;
     }
 
@@ -604,7 +604,7 @@ static int stackdriver_format(struct flb_config *config,
 
     /* Parameters for httpRequest */
     struct httpRequest http_request;
-    bool httpRequest_extracted = false;
+    int httpRequest_extracted = FLB_FALSE;
     int httpRequest_extra_size = 0;
 
     /* Count number of records */
@@ -745,7 +745,7 @@ static int stackdriver_format(struct flb_config *config,
         init_httpRequest(&http_request);
         httpRequest_extra_size = 0;
         httpRequest_extracted = extract_httpRequest(&http_request, obj, &httpRequest_extra_size);
-        if (httpRequest_extracted) {
+        if (httpRequest_extracted == FLB_TRUE) {
             entry_size += 1;
         }
 
@@ -778,7 +778,7 @@ static int stackdriver_format(struct flb_config *config,
         }
 
         /* Add httpRequest field into the log entry */
-        if (httpRequest_extracted) {
+        if (httpRequest_extracted == FLB_TRUE) {
             add_httpRequest_field(&http_request, &mp_pck);
         }
         

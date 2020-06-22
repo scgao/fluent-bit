@@ -40,9 +40,9 @@ void init_httpRequest(struct httpRequest *http_request)
     http_request->status = 0;
     http_request->cacheFillBytes = 0;
 
-    http_request->cacheLookup = false;
-    http_request->cacheHit = false;
-    http_request->cacheValidatedWithOriginServer = false;
+    http_request->cacheLookup = FLB_FALSE;
+    http_request->cacheHit = FLB_FALSE;
+    http_request->cacheValidatedWithOriginServer = FLB_FALSE;
 }
 
 void destroy_httpRequest(struct httpRequest *http_request)
@@ -69,68 +69,68 @@ void add_httpRequest_field(struct httpRequest *http_request, msgpack_packer *mp_
         msgpack_pack_map(mp_pck, 15);
 
         msgpack_pack_str(mp_pck, 7);
-        msgpack_pack_str_body(mp_pck,"latency", 7);
+        msgpack_pack_str_body(mp_pck, "latency", 7);
         msgpack_pack_str(mp_pck, flb_sds_len(http_request->latency));
         msgpack_pack_str_body(mp_pck, http_request->latency, flb_sds_len(http_request->latency));
     }
 
     /* String sub-fields */
     msgpack_pack_str(mp_pck, 13);
-    msgpack_pack_str_body(mp_pck,"requestMethod", 13);
+    msgpack_pack_str_body(mp_pck, "requestMethod", 13);
     msgpack_pack_str(mp_pck, flb_sds_len(http_request->requestMethod));
     msgpack_pack_str_body(mp_pck, http_request->requestMethod, flb_sds_len(http_request->requestMethod));
 
     msgpack_pack_str(mp_pck, 10);
-    msgpack_pack_str_body(mp_pck,"requestUrl", 10);
+    msgpack_pack_str_body(mp_pck, "requestUrl", 10);
     msgpack_pack_str(mp_pck, flb_sds_len(http_request->requestUrl));
     msgpack_pack_str_body(mp_pck, http_request->requestUrl, flb_sds_len(http_request->requestUrl));
 
     msgpack_pack_str(mp_pck, 9);
-    msgpack_pack_str_body(mp_pck,"userAgent", 9);
+    msgpack_pack_str_body(mp_pck, "userAgent", 9);
     msgpack_pack_str(mp_pck, flb_sds_len(http_request->userAgent));
     msgpack_pack_str_body(mp_pck, http_request->userAgent, flb_sds_len(http_request->userAgent));
 
     msgpack_pack_str(mp_pck, 8);
-    msgpack_pack_str_body(mp_pck,"remoteIp", 8);
+    msgpack_pack_str_body(mp_pck, "remoteIp", 8);
     msgpack_pack_str(mp_pck, flb_sds_len(http_request->remoteIp));
     msgpack_pack_str_body(mp_pck, http_request->remoteIp, flb_sds_len(http_request->remoteIp));
 
     msgpack_pack_str(mp_pck, 8);
-    msgpack_pack_str_body(mp_pck,"serverIp", 8);
+    msgpack_pack_str_body(mp_pck, "serverIp", 8);
     msgpack_pack_str(mp_pck, flb_sds_len(http_request->serverIp));
     msgpack_pack_str_body(mp_pck, http_request->serverIp, flb_sds_len(http_request->serverIp));
 
      msgpack_pack_str(mp_pck, 7);
-    msgpack_pack_str_body(mp_pck,"referer", 7);
+    msgpack_pack_str_body(mp_pck, "referer", 7);
     msgpack_pack_str(mp_pck, flb_sds_len(http_request->referer));
     msgpack_pack_str_body(mp_pck, http_request->referer, flb_sds_len(http_request->referer));
 
     msgpack_pack_str(mp_pck, 8);
-    msgpack_pack_str_body(mp_pck,"protocol", 8);
+    msgpack_pack_str_body(mp_pck, "protocol", 8);
     msgpack_pack_str(mp_pck, flb_sds_len(http_request->protocol));
     msgpack_pack_str_body(mp_pck, http_request->protocol, flb_sds_len(http_request->protocol));
 
     /* Integer sub-fields */
     msgpack_pack_str(mp_pck, 11);
-    msgpack_pack_str_body(mp_pck,"requestSize", 11);
+    msgpack_pack_str_body(mp_pck, "requestSize", 11);
     msgpack_pack_int64(mp_pck, http_request->requestSize);
 
     msgpack_pack_str(mp_pck, 12);
-    msgpack_pack_str_body(mp_pck,"responseSize", 12);
+    msgpack_pack_str_body(mp_pck, "responseSize", 12);
     msgpack_pack_int64(mp_pck, http_request->responseSize);
 
     msgpack_pack_str(mp_pck, 6);
-    msgpack_pack_str_body(mp_pck,"status", 6);
+    msgpack_pack_str_body(mp_pck, "status", 6);
     msgpack_pack_int64(mp_pck, http_request->status);
 
     msgpack_pack_str(mp_pck, 14);
-    msgpack_pack_str_body(mp_pck,"cacheFillBytes", 14);
+    msgpack_pack_str_body(mp_pck, "cacheFillBytes", 14);
     msgpack_pack_int64(mp_pck, http_request->cacheFillBytes);
 
     /* Boolean sub-fields */
     msgpack_pack_str(mp_pck, 11);
-    msgpack_pack_str_body(mp_pck,"cacheLookup", 11);
-    if (http_request->cacheLookup) {
+    msgpack_pack_str_body(mp_pck, "cacheLookup", 11);
+    if (http_request->cacheLookup == FLB_TRUE) {
         msgpack_pack_true(mp_pck);
     }
     else {
@@ -138,8 +138,8 @@ void add_httpRequest_field(struct httpRequest *http_request, msgpack_packer *mp_
     }
 
     msgpack_pack_str(mp_pck, 8);
-    msgpack_pack_str_body(mp_pck,"cacheHit", 8);
-    if (http_request->cacheLookup) {
+    msgpack_pack_str_body(mp_pck, "cacheHit", 8);
+    if (http_request->cacheLookup == FLB_TRUE) {
         msgpack_pack_true(mp_pck);
     }
     else {
@@ -147,8 +147,8 @@ void add_httpRequest_field(struct httpRequest *http_request, msgpack_packer *mp_
     }
 
     msgpack_pack_str(mp_pck, 30);
-    msgpack_pack_str_body(mp_pck,"cacheValidatedWithOriginServer", 30);
-    if (http_request->cacheValidatedWithOriginServer) {
+    msgpack_pack_str_body(mp_pck, "cacheValidatedWithOriginServer", 30);
+    if (http_request->cacheValidatedWithOriginServer == FLB_TRUE) {
         msgpack_pack_true(mp_pck);
     }
     else {
@@ -193,13 +193,13 @@ static void validate_latency(msgpack_object_str latency_in_payload, struct httpR
 }
 
 /* Return true if httpRequest extracted */
-bool extract_httpRequest(struct httpRequest *http_request, msgpack_object *obj, int *extra_subfields)
+int extract_httpRequest(struct httpRequest *http_request, msgpack_object *obj, int *extra_subfields)
 {
     httpRequest_status op_status = NO_HTTPREQUEST;
 
     if (obj->via.map.size != 0) {    	
-        msgpack_object_kv* p = obj->via.map.ptr;
-        msgpack_object_kv* const pend = obj->via.map.ptr + obj->via.map.size;
+        msgpack_object_kv *p = obj->via.map.ptr;
+        msgpack_object_kv *const pend = obj->via.map.ptr + obj->via.map.size;
 
         for (; p < pend && op_status == NO_HTTPREQUEST; ++p) {
             if (p->val.type == MSGPACK_OBJECT_MAP 
@@ -208,55 +208,55 @@ bool extract_httpRequest(struct httpRequest *http_request, msgpack_object *obj, 
                 op_status = HTTPREQUEST_EXISTED;
                 msgpack_object sub_field = p->val;
                 
-                msgpack_object_kv* tmp_p = sub_field.via.map.ptr;
-                msgpack_object_kv* const tmp_pend = sub_field.via.map.ptr + sub_field.via.map.size;
+                msgpack_object_kv *tmp_p = sub_field.via.map.ptr;
+                msgpack_object_kv *const tmp_pend = sub_field.via.map.ptr + sub_field.via.map.size;
 
                 /* Validate the subfields of httpRequest */
                 for (; tmp_p < tmp_pend; ++tmp_p) {
                     if (strncmp("requestMethod", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_STR) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_STR) {
                             continue;
                         }
                         http_request->requestMethod = flb_sds_copy(http_request->requestMethod, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                     }
                     else if (strncmp("requestUrl", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_STR) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_STR) {
                             continue;
                         }
                         http_request->requestUrl = flb_sds_copy(http_request->requestUrl, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                     }
                     else if (strncmp("userAgent", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_STR) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_STR) {
                             continue;
                         }
                         http_request->userAgent = flb_sds_copy(http_request->userAgent, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                     }
                     else if (strncmp("remoteIp", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_STR) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_STR) {
                             continue;
                         }
                         http_request->remoteIp = flb_sds_copy(http_request->remoteIp, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                     }
                     else if (strncmp("serverIp", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_STR) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_STR) {
                             continue;
                         }
                         http_request->serverIp = flb_sds_copy(http_request->serverIp, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                     }
                     else if (strncmp("referer", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_STR) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_STR) {
                             continue;
                         }
                         http_request->referer = flb_sds_copy(http_request->referer, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                     }
                     else if (strncmp("protocol", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_STR) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_STR) {
                             continue;
                         }
                         http_request->protocol = flb_sds_copy(http_request->protocol, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
                     }
                     else if (strncmp("latency", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_STR) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_STR) {
                             continue;
                         }
                         validate_latency(tmp_p->val.via.str, http_request);
@@ -296,22 +296,37 @@ bool extract_httpRequest(struct httpRequest *http_request, msgpack_object *obj, 
                     }
 
                     else if (strncmp("cacheLookup", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_BOOLEAN) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_BOOLEAN) {
                             continue;
                         }
-                        http_request->cacheLookup = tmp_p->val.via.boolean;
+                        if (tmp_p->val.via.boolean) {
+                            http_request->cacheLookup = FLB_TRUE;
+                        }
+                        else {
+                            http_request->cacheLookup = FLB_FALSE;
+                        }
                     }
                     else if (strncmp("cacheHit", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_BOOLEAN) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_BOOLEAN) {
                             continue;
                         }
-                        http_request->cacheHit = tmp_p->val.via.boolean;
+                        if (tmp_p->val.via.boolean) {
+                            http_request->cacheHit = FLB_TRUE;
+                        }
+                        else {
+                            http_request->cacheHit = FLB_FALSE;
+                        }
                     }
                     else if (strncmp("cacheValidatedWithOriginServer", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_BOOLEAN) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_BOOLEAN) {
                             continue;
                         }
-                        http_request->cacheValidatedWithOriginServer = tmp_p->val.via.boolean;
+                        if (tmp_p->val.via.boolean) {
+                            http_request->cacheValidatedWithOriginServer = FLB_TRUE;
+                        }
+                        else {
+                            http_request->cacheValidatedWithOriginServer = FLB_FALSE;
+                        }
                     }
 
                     else {
@@ -326,13 +341,13 @@ bool extract_httpRequest(struct httpRequest *http_request, msgpack_object *obj, 
 }
 
 void pack_extra_httpRequest_subfields(msgpack_packer *mp_pck, msgpack_object *http_request, int extra_subfields) {
+    msgpack_object_kv *p = http_request->via.map.ptr;
+    msgpack_object_kv *const pend = http_request->via.map.ptr + http_request->via.map.size;
+
     msgpack_pack_map(mp_pck, extra_subfields);
 
-    msgpack_object_kv* p = http_request->via.map.ptr;
-    msgpack_object_kv* const pend = http_request->via.map.ptr + http_request->via.map.size;
-
     for (; p < pend; ++p) {
-        if(strncmp("requestMethod", p->key.via.str.ptr, p->key.via.str.size) != 0 
+        if (strncmp("requestMethod", p->key.via.str.ptr, p->key.via.str.size) != 0 
             && strncmp("requestUrl", p->key.via.str.ptr, p->key.via.str.size) != 0
             && strncmp("userAgent", p->key.via.str.ptr, p->key.via.str.size) != 0
             && strncmp("remoteIp", p->key.via.str.ptr, p->key.via.str.size) != 0

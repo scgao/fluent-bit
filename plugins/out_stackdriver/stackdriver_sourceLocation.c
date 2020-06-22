@@ -72,7 +72,7 @@ int extract_sourceLocation(flb_sds_t *sourceLocation_file, int64_t *sourceLocati
                         continue;
                     }
                     if (strncmp("file", tmp_p->key.via.str.ptr, tmp_p->key.via.str.size) == 0) {
-                        if(tmp_p->val.type != MSGPACK_OBJECT_STR) {
+                        if (tmp_p->val.type != MSGPACK_OBJECT_STR) {
                             continue;
                         }
                         *sourceLocation_file = flb_sds_copy(*sourceLocation_file, tmp_p->val.via.str.ptr, tmp_p->val.via.str.size);
@@ -111,7 +111,7 @@ void pack_extra_sourceLocation_subfields(msgpack_packer *mp_pck, msgpack_object 
     msgpack_pack_map(mp_pck, extra_subfields);
 
     for (; p < pend; ++p) {
-        if(strncmp("file", p->key.via.str.ptr, p->key.via.str.size) != 0 
+        if (strncmp("file", p->key.via.str.ptr, p->key.via.str.size) != 0 
             && strncmp("line", p->key.via.str.ptr, p->key.via.str.size) != 0
             && strncmp("function", p->key.via.str.ptr, p->key.via.str.size) != 0) {
             msgpack_pack_object(mp_pck, p->key);
