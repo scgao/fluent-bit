@@ -103,4 +103,10 @@ typedef enum {
     FLB_STD_DEFAULT   = 0
 } severity_t;
 
+typedef enum {
+    INSERTID_VALID = 0,
+    INSERTID_INVALID = 1,
+    INSERTID_NOT_EXISTED = 2
+} insertId_status;
+
 #endif

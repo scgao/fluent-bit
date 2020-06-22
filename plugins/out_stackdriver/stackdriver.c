@@ -449,76 +449,110 @@ static int get_severity_level(severity_t * s, const msgpack_object * o,
     return -1;
 }
 
-static int pack_json_payload(bool insertId_extracted, bool operation_extracted, int operation_extra_size, 
-                            bool sourceLocation_extracted, int sourceLocation_extra_size,
-                            bool httpRequest_extracted, int httpRequest_extra_size, 
-                            msgpack_packer* mp_pck, msgpack_object *obj)
+static void validate_insertId(msgpack_object * subobj, const msgpack_object * o, insertId_status *status)
+{
+    int i = 0;
+    msgpack_object_kv * p = NULL;
+    *status = INSERTID_NOT_EXISTED;
+
+    if (o == NULL || subobj == NULL) {
+        return;
+    }
+
+    for (i = 0; i < o->via.map.size; i++) {
+        p = &o->via.map.ptr[i];
+        if (p->key.type != MSGPACK_OBJECT_STR) {
+            continue;
+        }
+        if (strncmp(INSERTID_IN_JSON, p->key.via.str.ptr, p->key.via.str.size) == 0) {
+            if (p->val.type == MSGPACK_OBJECT_STR && p->val.via.str.size > 0) {
+                *subobj = p->val;
+                *status = INSERTID_VALID;
+            }
+            else {
+                *status = INSERTID_INVALID;
+            }
+            break;
+        }
+    }
+}
+
+static int pack_json_payload(int insertId_extracted, int operation_extracted, int operation_extra_size, 
+                             int sourceLocation_extracted, int sourceLocation_extra_size,
+                             bool httpRequest_extracted, int httpRequest_extra_size, 
+                             msgpack_packer* mp_pck, msgpack_object *obj)
 {
     /* Specified fields include operation, sourceLocation ... */
     int to_remove = 0;
-    if(insertId_extracted) {
+    int ret;
+    msgpack_object_kv *kv = obj->via.map.ptr;
+    msgpack_object_kv *const kvend = obj->via.map.ptr + obj->via.map.size;
+
+    if(insertId_extracted == FLB_TRUE) {
         to_remove += 1;
     }
-    if(operation_extracted && operation_extra_size == 0) {
+    if(operation_extracted == FLB_TRUE && operation_extra_size == 0) {
         to_remove += 1;
     }
-    if(sourceLocation_extracted && sourceLocation_extra_size == 0) {
+    if(sourceLocation_extracted == FLB_TRUE && sourceLocation_extra_size == 0) {
         to_remove += 1;
     }
     if(httpRequest_extracted && httpRequest_extra_size == 0) {
         to_remove += 1;
     }
 
-    int ret = msgpack_pack_map(mp_pck, obj->via.map.size - to_remove);
-    if(ret < 0) {
+    ret = msgpack_pack_map(mp_pck, obj->via.map.size - to_remove);
+    if (ret < 0) {
         return ret;
     }
-    else {
-        msgpack_object_kv* kv = obj->via.map.ptr;
-        msgpack_object_kv* const kvend = obj->via.map.ptr + obj->via.map.size;
-        for(; kv != kvend; ++kv) {
-            if (insertId_extracted && strncmp(INSERTID_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
-                && kv->val.type == MSGPACK_OBJECT_STR) {
-                continue;
-            }
 
-            if (strncmp(OPERATION_FIELD_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
-                && kv->val.type == MSGPACK_OBJECT_MAP) {
-
-                if(operation_extra_size > 0) {
-                    msgpack_pack_object(mp_pck, kv->key);
-                    pack_extra_operation_subfields(mp_pck, &kv->val, operation_extra_size);
-                }
-                continue;
-            }
-
-            if (strncmp(SOURCELOCATION_FIELD_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
-                && kv->val.type == MSGPACK_OBJECT_MAP) {
-
-                if(sourceLocation_extra_size > 0) {
-                    msgpack_pack_object(mp_pck, kv->key);
-                    pack_extra_sourceLocation_subfields(mp_pck, &kv->val, sourceLocation_extra_size);
-                }
-                continue;
-            }
-
-            if (strncmp(HTTPREQUEST_FIELD_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
-                && kv->val.type == MSGPACK_OBJECT_MAP) {
-
-                if(httpRequest_extra_size > 0) {
-                    msgpack_pack_object(mp_pck, kv->key);
-                    pack_extra_httpRequest_subfields(mp_pck, &kv->val, httpRequest_extra_size);
-                }
-                continue;
-            }
-            
-            ret = msgpack_pack_object(mp_pck, kv->key);
-            if(ret < 0) { return ret; }
-            ret = msgpack_pack_object(mp_pck, kv->val);
-            if(ret < 0) { return ret; }
+    for(; kv != kvend; ++kv	) {
+        if (insertId_extracted == FLB_TRUE && strncmp(INSERTID_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
+            && kv->val.type == MSGPACK_OBJECT_STR) {
+            continue;
         }
-        return 0;
+
+        if (strncmp(OPERATION_FIELD_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
+            && kv->val.type == MSGPACK_OBJECT_MAP) {
+
+            if (operation_extra_size > 0) {
+                msgpack_pack_object(mp_pck, kv->key);
+                pack_extra_operation_subfields(mp_pck, &kv->val, operation_extra_size);
+            }
+            continue;
+        }
+
+        if (strncmp(SOURCELOCATION_FIELD_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
+            && kv->val.type == MSGPACK_OBJECT_MAP) {
+
+            if(sourceLocation_extra_size > 0) {
+                msgpack_pack_object(mp_pck, kv->key);
+                pack_extra_sourceLocation_subfields(mp_pck, &kv->val, sourceLocation_extra_size);
+            }
+            continue;
+        }
+        
+        if (strncmp(HTTPREQUEST_FIELD_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
+            && kv->val.type == MSGPACK_OBJECT_MAP) {
+
+            if(httpRequest_extra_size > 0) {
+                msgpack_pack_object(mp_pck, kv->key);
+                pack_extra_httpRequest_subfields(mp_pck, &kv->val, httpRequest_extra_size);
+            }
+            continue;
+        }
+
+        ret = msgpack_pack_object(mp_pck, kv->key);
+        if (ret < 0) {
+            return ret;
+        }
+        ret = msgpack_pack_object(mp_pck, kv->val);
+        if (ret < 0) {
+            return ret;
+        }
     }
+
+    return 0;
 }
 static int stackdriver_format(struct flb_config *config,
                               struct flb_input_instance *ins,
@@ -544,28 +578,28 @@ static int stackdriver_format(struct flb_config *config,
     flb_sds_t out_buf;
     struct flb_stackdriver *ctx = plugin_context;
 
-    /* Parameters for severity */
-    bool severity_extracted = false;
+    /* Parameters in severity */
+    int severity_extracted = FLB_FALSE;
     severity_t severity;
 
     /* Parameters for insertId */
     msgpack_object insertId_obj;
-    flb_sds_t insertId_key;
-    bool insertId_extracted = false;
+    insertId_status in_status;
+    int insertId_extracted = FLB_FALSE;
 
     /* Parameters for Operation */
     flb_sds_t operation_id;
     flb_sds_t operation_producer;
-    bool operation_first = false;
-    bool operation_last = false;
-    bool operation_extracted = false;
+    int operation_first = FLB_FALSE;
+    int operation_last = FLB_FALSE;
+    int operation_extracted = FLB_FALSE;
     int operation_extra_size = 0;
 
     /* Parameters for sourceLocation */
     flb_sds_t sourceLocation_file;
     int64_t sourceLocation_line = 0;
     flb_sds_t sourceLocation_function;
-    bool sourceLocation_extracted = false;
+    int sourceLocation_extracted = FLB_FALSE;
     int sourceLocation_extra_size = 0;
 
     /* Parameters for httpRequest */
@@ -661,26 +695,37 @@ static int stackdriver_format(struct flb_config *config,
         /* Extract severity */
          if (ctx->severity_key
             && get_severity_level(&severity, obj, ctx->severity_key) == 0) {
-            severity_extracted = true;
+            severity_extracted = FLB_TRUE;
             entry_size += 1;
         }
 
         /* Extract insertId */
-        insertId_key = flb_sds_create(INSERTID_IN_JSON);
-        if (get_msgpack_obj(&insertId_obj, obj, insertId_key, flb_sds_len(insertId_key), MSGPACK_OBJECT_STR) == 0) {
-            insertId_extracted = true;
+        validate_insertId(&insertId_obj, obj, &in_status);
+        if (in_status == INSERTID_VALID) {
+            insertId_extracted = FLB_TRUE;
             entry_size += 1;
+        }
+        else if (in_status == INSERTID_NOT_EXISTED) {
+            insertId_extracted = FLB_FALSE;
+        }
+        else {
+            msgpack_sbuffer_destroy(&mp_sbuf);
+            msgpack_unpacked_destroy(&result);
+            flb_error("Incorrect insertId received. InsertId should be an non-empty string.");
+            *out_size = 0;
+            return -1;
         }
 
         /* Extract operation */
         operation_id = flb_sds_create("");
         operation_producer = flb_sds_create("");
-        operation_first = false;
-        operation_last = false;
+        operation_first = FLB_FALSE;
+        operation_last = FLB_FALSE;
         operation_extra_size = 0;
         operation_extracted = extract_operation(&operation_id, &operation_producer,
-                              &operation_first, &operation_last, obj, &operation_extra_size);
-        if (operation_extracted) {
+                                                &operation_first, &operation_last, obj, &operation_extra_size);
+        
+        if (operation_extracted == FLB_TRUE) {
             entry_size += 1;
         }
 
@@ -690,9 +735,9 @@ static int stackdriver_format(struct flb_config *config,
         sourceLocation_line = 0;
         sourceLocation_extra_size = 0;
         sourceLocation_extracted = extract_sourceLocation(&sourceLocation_file, &sourceLocation_line,
-                              &sourceLocation_function, obj, &sourceLocation_extra_size);
+                                                          &sourceLocation_function, obj, &sourceLocation_extra_size);
         
-        if (sourceLocation_extracted) {
+        if (sourceLocation_extracted == FLB_TRUE) {
             entry_size += 1;
         }
 
@@ -707,29 +752,29 @@ static int stackdriver_format(struct flb_config *config,
         msgpack_pack_map(&mp_pck, entry_size);
         
         /* Add severity into the log entry */
-        if (severity_extracted) {
+        if (severity_extracted == FLB_TRUE) {
             msgpack_pack_str(&mp_pck, 8);
             msgpack_pack_str_body(&mp_pck, "severity", 8);
             msgpack_pack_int(&mp_pck, severity);
         }
 
         /* Add insertId field into the log entry */
-        if (insertId_extracted) {
+        if (insertId_extracted == FLB_TRUE) {
             msgpack_pack_str(&mp_pck, 8);
             msgpack_pack_str_body(&mp_pck, "insertId", 8);
             msgpack_pack_object(&mp_pck, insertId_obj);
         }
 
         /* Add operation field into the log entry */
-        if (operation_extracted) {
+        if (operation_extracted == FLB_TRUE) {
             add_operation_field(&operation_id, &operation_producer,
                                 &operation_first, &operation_last, &mp_pck);
         }
 
         /* Add sourceLocation field into the log entry */
-        if (sourceLocation_extracted) {
+        if (sourceLocation_extracted == FLB_TRUE) {
             add_sourceLocation_field(&sourceLocation_file, sourceLocation_line, 
-                                &sourceLocation_function, &mp_pck);
+                                     &sourceLocation_function, &mp_pck);
         }
 
         /* Add httpRequest field into the log entry */
@@ -738,7 +783,6 @@ static int stackdriver_format(struct flb_config *config,
         }
         
         /* Clean up */
-        flb_sds_destroy(insertId_key);
         flb_sds_destroy(operation_id);
         flb_sds_destroy(operation_producer);
         flb_sds_destroy(sourceLocation_file);
