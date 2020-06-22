@@ -161,7 +161,7 @@ void add_httpRequest_field(struct httpRequest *http_request, msgpack_packer *mp_
  *      + whitespace (opt.) + "s" + whitespace (opt.) 
  */
 static void validate_latency(msgpack_object_str latency_in_payload, struct httpRequest *http_request) {
-    char *pattern = "^\\s*[0-9]*(\.[0-9][0-9]*)?\\s*s\\s*$";
+    char *pattern = "^[[:space:]]*[[:digit:]][[:digit:]]*\\(.[[:digit:]][[:digit:]]*\\)\\{0,1\\}[[:space:]]*s[[:space:]]*$";
     regex_t reg;
     int nm = 10;
     regmatch_t pmatch[nm];
@@ -171,15 +171,14 @@ static void validate_latency(msgpack_object_str latency_in_payload, struct httpR
     flb_sds_t latency = flb_sds_create_len(latency_in_payload.ptr, latency_in_payload.size);
     int i = 0, j = 0;
 
-    printf("size: %d\n", strlen(latency));
+    regcomp(&reg, pattern, REG_EXTENDED);
+    status = regexec(&reg, latency, nm, pmatch, 0);
+
+    //TODO: delete printf
+    printf("status: %d\n", status);
     fflush(stdout);
 
-    regcomp(&reg, pattern, REG_EXTENDED);
-    status = regexec(&reg, (char* )latency, nm, pmatch, 0);
-
     if (status != REG_NOMATCH) {
-        printf("good\n");
-        fflush(stdout);
         for (; i < latency_in_payload.size; ++ i) {
             if (latency_in_payload.ptr[i] == '.' || latency_in_payload.ptr[i] == 's' || isdigit(latency_in_payload.ptr[i])) {
                 tmp[j] = latency_in_payload.ptr[i];
