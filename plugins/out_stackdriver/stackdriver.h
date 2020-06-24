@@ -46,7 +46,7 @@
 /* Default Resource type */
 #define FLB_SDS_RESOURCE_TYPE "global"
 
-#define OPERATION_FIELD_IN_JSON "logging.googleapis.com/operation"
+#define DEFAULT_OPERATION_KEY "logging.googleapis.com/operation"
 
 struct flb_stackdriver {
     /* credentials */
@@ -71,6 +71,7 @@ struct flb_stackdriver {
     /* other */
     flb_sds_t resource;
     flb_sds_t severity_key;
+    flb_sds_t operation_key;
 
     /* oauth2 context */
     struct flb_oauth2 *o;

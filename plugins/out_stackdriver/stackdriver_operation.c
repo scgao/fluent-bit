@@ -61,7 +61,8 @@ void add_operation_field(flb_sds_t *operation_id, flb_sds_t *operation_producer,
 /* Return true if operation extracted */
 int extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer, 
                       int *operation_first, int *operation_last, 
-                      msgpack_object *obj, int *extra_subfields)
+                      msgpack_object *obj, int *extra_subfields,
+                      flb_sds_t operation_key)
 {
     operation_status op_status = NO_OPERATION;
 
@@ -71,7 +72,7 @@ int extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
 
         for (; p < pend && op_status == NO_OPERATION; ++p) {
             if (p->val.type == MSGPACK_OBJECT_MAP && p->key.type == MSGPACK_OBJECT_STR
-                && strncmp(OPERATION_FIELD_IN_JSON, p->key.via.str.ptr, p->key.via.str.size) == 0) {
+                && strncmp(operation_key, p->key.via.str.ptr, p->key.via.str.size) == 0) {
                 
                 op_status = OPERATION_EXISTED;
                 msgpack_object sub_field = p->val;

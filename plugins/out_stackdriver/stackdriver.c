@@ -448,7 +448,8 @@ static int get_severity_level(severity_t * s, const msgpack_object * o,
 }
 
 static int pack_json_payload(int operation_extracted, int operation_extra_size, 
-                             msgpack_packer* mp_pck, msgpack_object *obj)
+                             msgpack_packer* mp_pck, msgpack_object *obj,
+                             struct flb_stackdriver *ctx)
 {
     /* Specified fields include operation, sourceLocation ... */
     int to_remove = 0;
@@ -466,7 +467,7 @@ static int pack_json_payload(int operation_extracted, int operation_extra_size,
     }
     
     for(; kv != kvend; ++kv	) {
-        if (strncmp(OPERATION_FIELD_IN_JSON, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
+        if (strncmp(ctx->operation_key, kv->key.via.str.ptr, kv->key.via.str.size) == 0 
             && kv->val.type == MSGPACK_OBJECT_MAP) {
 
             if (operation_extra_size > 0) {
@@ -485,6 +486,8 @@ static int pack_json_payload(int operation_extracted, int operation_extra_size,
             return ret;
         }
     }
+
+    flb_sds_destroy(operation_key);
 
     return 0;
 }
@@ -622,7 +625,8 @@ static int stackdriver_format(struct flb_config *config,
         operation_last = FLB_FALSE;
         operation_extra_size = 0;
         operation_extracted = extract_operation(&operation_id, &operation_producer,
-                                                &operation_first, &operation_last, obj, &operation_extra_size);
+                                                &operation_first, &operation_last, obj, &operation_extra_size,
+                                                ctx->operation_key);
         
         if (operation_extracted == FLB_TRUE) {
             entry_size += 1;
@@ -650,7 +654,7 @@ static int stackdriver_format(struct flb_config *config,
         /* jsonPayload */
         msgpack_pack_str(&mp_pck, 11);
         msgpack_pack_str_body(&mp_pck, "jsonPayload", 11);
-        pack_json_payload(operation_extracted, operation_extra_size, &mp_pck, obj);
+        pack_json_payload(operation_extracted, operation_extra_size, &mp_pck, obj, ctx);
 
         /* logName */
         len = snprintf(path, sizeof(path) - 1,
