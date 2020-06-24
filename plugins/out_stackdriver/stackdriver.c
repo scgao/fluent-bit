@@ -607,6 +607,9 @@ static int stackdriver_format(struct flb_config *config,
     int httpRequest_extracted = FLB_FALSE;
     int httpRequest_extra_size = 0;
 
+    /* Parameters for label & lable_map */
+    int root_map_size = 3;
+
     /* Count number of records */
     array_size = flb_mp_count(data, bytes);
 
@@ -620,7 +623,15 @@ static int stackdriver_format(struct flb_config *config,
      * {"resource": {"type": "...", "labels": {...},
      *  "entries": []
      */
-    msgpack_pack_map(&mp_pck, 2);
+    msgpack_pack_map(&mp_pck, root_map_size);
+
+    msgpack_pack_str(&mp_pck, 6);
+    msgpack_pack_str_body(&mp_pck, "labels", 6);
+    msgpack_pack_map(&mp_pck, 1);
+    msgpack_pack_str(&mp_pck, flb_sds_len(ctx->key1));
+    msgpack_pack_str_body(&mp_pck, ctx->key1, flb_sds_len(ctx->key1));
+    msgpack_pack_str(&mp_pck, flb_sds_len(ctx->val1));
+    msgpack_pack_str_body(&mp_pck, ctx->val1, flb_sds_len(ctx->val1));
 
     msgpack_pack_str(&mp_pck, 8);
     msgpack_pack_str_body(&mp_pck, "resource", 8);
@@ -749,8 +760,25 @@ static int stackdriver_format(struct flb_config *config,
             entry_size += 1;
         }
 
+        bool labels_exist = true;
+        if (labels_exist) {
+            entry_size += 1;
+        }
+
         msgpack_pack_map(&mp_pck, entry_size);
         
+        msgpack_pack_str(&mp_pck, 6);
+        msgpack_pack_str_body(&mp_pck, "labels", 6);
+        msgpack_pack_map(&mp_pck, 2);
+        msgpack_pack_str(&mp_pck, 4);
+        msgpack_pack_str_body(&mp_pck, "key2", 4);
+        msgpack_pack_str(&mp_pck, 4);
+        msgpack_pack_str_body(&mp_pck, "val2", 4);
+        msgpack_pack_str(&mp_pck, 4);
+        msgpack_pack_str_body(&mp_pck, "key3", 4);
+        msgpack_pack_str(&mp_pck, 4);
+        msgpack_pack_str_body(&mp_pck, "val3", 4);
+
         /* Add severity into the log entry */
         if (severity_extracted == FLB_TRUE) {
             msgpack_pack_str(&mp_pck, 8);

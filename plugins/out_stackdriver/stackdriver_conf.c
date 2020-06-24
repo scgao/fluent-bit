@@ -176,6 +176,79 @@ static int read_credentials_file(const char *creds, struct flb_stackdriver *ctx)
     return 0;
 }
 
+static int read_labels(const char *labels, struct flb_stackdriver *ctx)
+{
+    int i;
+    int ret;
+    int key_len;
+    int val_len;
+    int tok_size = 32;
+    char *key;
+    char *val;
+    jsmn_parser parser;
+    jsmntok_t *t;
+    jsmntok_t *tokens;
+
+    /* Parse content */
+    jsmn_init(&parser);
+    tokens = flb_calloc(1, sizeof(jsmntok_t) * tok_size);
+    if (!tokens) {
+        flb_errno();
+        return -1;
+    }
+
+    ret = jsmn_parse(&parser, labels, strlen(labels), tokens, tok_size);
+    if (ret <= 0) {
+        flb_plg_error(ctx->ins, "invalid JSON credentials file: %s",
+                  labels);
+        flb_free(tokens);
+        return -1;
+    }
+
+    t = &tokens[0];
+    if (t->type != JSMN_OBJECT) {
+        flb_plg_error(ctx->ins, "invalid JSON map on file: %s",
+                  labels);
+        flb_free(tokens);
+        return -1;
+    }
+
+    printf("size: %d\n", ret);
+    fflush(stdout);
+    /* Parse JSON tokens */
+    for (i = 1; i < ret; i++) {
+        t = &tokens[i];
+        if (t->type != JSMN_STRING) {
+            continue;
+        }
+
+        if (t->start == -1 || t->end == -1 || (t->start == 0 && t->end == 0)){
+            break;
+        }
+
+        /* Key */
+        key = labels + t->start;
+        key_len = (t->end - t->start);
+
+        /* Value */
+        i++;
+        t = &tokens[i];
+        val = labels + t->start;
+        val_len = (t->end - t->start);
+
+        if (key_cmp(key, key_len, "key1") == 0) {
+            ctx->key1 = flb_sds_create_len(key, key_len);
+            ctx->val1 = flb_sds_create_len(val, val_len);
+            printf("key: %s\n", ctx->key1);
+            fflush(stdout);
+        }
+    }
+
+    flb_free(tokens);
+
+    return 0;
+}
+
 struct flb_stackdriver *flb_stackdriver_conf_create(struct flb_output_instance *ins,
                                               struct flb_config *config)
 {
@@ -284,6 +357,12 @@ struct flb_stackdriver *flb_stackdriver_conf_create(struct flb_output_instance *
     tmp = flb_output_get_property("severity_key", ins);
     if (tmp) {
         ctx->severity_key = flb_sds_create(tmp);
+    }
+
+    tmp = flb_output_get_property("labels", ins);
+    if (tmp) {
+        ctx->labels = flb_sds_create(tmp);
+        read_labels(tmp, ctx);
     }
 
     return ctx;
