@@ -487,8 +487,6 @@ static int pack_json_payload(int operation_extracted, int operation_extra_size,
         }
     }
 
-    flb_sds_destroy(operation_key);
-
     return 0;
 }
 static int stackdriver_format(struct flb_config *config,
