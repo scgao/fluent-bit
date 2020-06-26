@@ -167,7 +167,7 @@ static void validate_latency(msgpack_object_str latency_in_payload, struct httpR
     regmatch_t pmatch[10];
     int status = 0;
 
-    char tmp[latency_in_payload.size];
+    char extract_latency[latency_in_payload.size];
     flb_sds_t latency = flb_sds_create_len(latency_in_payload.ptr, latency_in_payload.size);
     int i = 0, j = 0;
 
@@ -180,11 +180,11 @@ static void validate_latency(msgpack_object_str latency_in_payload, struct httpR
     if (status != REG_NOMATCH) {
         for (; i < latency_in_payload.size; ++ i) {
             if (latency_in_payload.ptr[i] == '.' || latency_in_payload.ptr[i] == 's' || isdigit(latency_in_payload.ptr[i])) {
-                tmp[j] = latency_in_payload.ptr[i];
+                extract_latency[j] = latency_in_payload.ptr[i];
                 ++ j;
             }
         }
-        http_request->latency = flb_sds_copy(http_request->latency, tmp, j);
+        http_request->latency = flb_sds_copy(http_request->latency, extract_latency, j);
     }
 }
 

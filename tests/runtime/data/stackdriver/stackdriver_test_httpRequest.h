@@ -106,24 +106,6 @@
         "}"     \
 	"}]"
 
-#define HTTPREQUEST_LATENCY_MAX	"["		\
-	"1591111124,"			\
-	"{"				\
-        "\"logging.googleapis.com/http_request\": "		\
-        "{"            \
-            "\"latency\": \"315576000000.999999999s\""      \
-        "}"     \
-	"}]"
-
-#define HTTPREQUEST_LATENCY_OVERFLOW	"["		\
-	"1591111124,"			\
-	"{"				\
-        "\"logging.googleapis.com/http_request\": "		\
-        "{"            \
-            "\"latency\": \"315576000001s\""      \
-        "}"     \
-	"}]"
-
 #define HTTPREQUEST_LATENCY_INVALID_SPACES	"["		\
 	"1591111124,"			\
 	"{"				\

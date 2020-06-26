@@ -1027,39 +1027,6 @@ static void cb_check_httpRequest_lantency_common_case(void *ctx, int ffd,
     flb_sds_destroy(res_data);
 }
 
-static void cb_check_httpRequest_lantency_max(void *ctx, int ffd,
-                                              int res_ret, void *res_data, size_t res_size,
-                                              void *data)
-{
-    int ret;
-
-    ret = mp_kv_cmp(res_data, res_size, "$entries[0]['httpRequest']['latency']", "315576000000.999999999s");
-    TEST_CHECK(ret == FLB_TRUE);
-
-    /* check `httpRequest` has been removed from jsonPayload */
-    ret = mp_kv_exists(res_data, res_size, "$entries[0]['jsonPayload']['logging.googleapis.com/http_request']");
-    TEST_CHECK(ret == FLB_FALSE);
-
-    flb_sds_destroy(res_data);
-}
-
-static void cb_check_httpRequest_lantency_overflow(void *ctx, int ffd,
-                                                           int res_ret, void *res_data, size_t res_size,
-                                                           void *data)
-{
-    int ret;
-
-    ret = mp_kv_cmp(res_data, res_size, "$entries[0]['httpRequest']['latency']", "315576000001s");
-    TEST_CHECK(ret == FLB_TRUE);
-
-    /* check `httpRequest` has been removed from jsonPayload */
-    ret = mp_kv_exists(res_data, res_size, "$entries[0]['jsonPayload']['logging.googleapis.com/http_request']");
-    TEST_CHECK(ret == FLB_FALSE);
-
-    flb_sds_destroy(res_data);
-}
-
-
 static void cb_check_httpRequest_latency_incorrect_format(void *ctx, int ffd,
                                                           int res_ret, void *res_data, size_t res_size,
                                                           void *data)
@@ -2077,86 +2044,6 @@ void flb_test_httpRequest_latency_common_case()
     flb_destroy(ctx);
 }
 
-void flb_test_httpRequest_latency_max()
-{
-    int ret;
-    int size = sizeof(HTTPREQUEST_LATENCY_MAX) - 1;
-    flb_ctx_t *ctx;
-    int in_ffd;
-    int out_ffd;
-
-    /* Create context, flush every second (some checks omitted here) */
-    ctx = flb_create();
-    flb_service_set(ctx, "flush", "1", "grace", "1", NULL);
-
-    /* Lib input mode */
-    in_ffd = flb_input(ctx, (char *) "lib", NULL);
-    flb_input_set(ctx, in_ffd, "tag", "test", NULL);
-
-    /* Stackdriver output */
-    out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
-    flb_output_set(ctx, out_ffd,
-                   "match", "test",
-                   "resource", "gce_instance",
-                   NULL);
-
-    /* Enable test mode */
-    ret = flb_output_set_test(ctx, out_ffd, "formatter",
-                              cb_check_httpRequest_lantency_max,
-                              NULL);
-
-    /* Start */
-    ret = flb_start(ctx);
-    TEST_CHECK(ret == 0);
-
-    /* Ingest data sample */
-    flb_lib_push(ctx, in_ffd, (char *) HTTPREQUEST_LATENCY_MAX, size);
-
-    sleep(2);
-    flb_stop(ctx);
-    flb_destroy(ctx);
-}
-
-void flb_test_httpRequest_latency_overflow()
-{
-    int ret;
-    int size = sizeof(HTTPREQUEST_LATENCY_OVERFLOW) - 1;
-    flb_ctx_t *ctx;
-    int in_ffd;
-    int out_ffd;
-
-    /* Create context, flush every second (some checks omitted here) */
-    ctx = flb_create();
-    flb_service_set(ctx, "flush", "1", "grace", "1", NULL);
-
-    /* Lib input mode */
-    in_ffd = flb_input(ctx, (char *) "lib", NULL);
-    flb_input_set(ctx, in_ffd, "tag", "test", NULL);
-
-    /* Stackdriver output */
-    out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
-    flb_output_set(ctx, out_ffd,
-                   "match", "test",
-                   "resource", "gce_instance",
-                   NULL);
-
-    /* Enable test mode */
-    ret = flb_output_set_test(ctx, out_ffd, "formatter",
-                              cb_check_httpRequest_lantency_overflow,
-                              NULL);
-
-    /* Start */
-    ret = flb_start(ctx);
-    TEST_CHECK(ret == 0);
-
-    /* Ingest data sample */
-    flb_lib_push(ctx, in_ffd, (char *) HTTPREQUEST_LATENCY_OVERFLOW, size);
-
-    sleep(2);
-    flb_stop(ctx);
-    flb_destroy(ctx);
-}
-
 void flb_test_httpRequest_latency_invalid_spaces()
 {
     int ret;
@@ -2312,7 +2199,6 @@ TEST_LIST = {
     {"httpRequest_subfields_in_incorret_type", flb_test_httpRequest_incorrect_type_subfields},
     {"httpRequest_extra_subfields_exist", flb_test_httpRequest_extra_subfields},
     {"httpRequest_common_latency", flb_test_httpRequest_latency_common_case},
-    {"httpRequest_max_latency", flb_test_httpRequest_latency_max},
     {"httpRequest_latency_incorrect_spaces", flb_test_httpRequest_latency_invalid_spaces},
     {"httpRequest_latency_incorrect_string", flb_test_httpRequest_latency_invalid_string},
     {"httpRequest_latency_incorrect_end", flb_test_httpRequest_latency_invalid_end},
