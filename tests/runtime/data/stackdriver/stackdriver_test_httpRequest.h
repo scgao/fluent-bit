@@ -115,21 +115,12 @@
         "}"     \
 	"}]"
 
-#define HTTPREQUEST_LATENCY_SECONDS_OVERFLOW	"["		\
+#define HTTPREQUEST_LATENCY_OVERFLOW	"["		\
 	"1591111124,"			\
 	"{"				\
         "\"logging.googleapis.com/http_request\": "		\
         "{"            \
             "\"latency\": \"315576000001s\""      \
-        "}"     \
-	"}]"
-
-    #define HTTPREQUEST_LATENCY_NANOS_OVERFLOW	"["		\
-	"1591111124,"			\
-	"{"				\
-        "\"logging.googleapis.com/http_request\": "		\
-        "{"            \
-            "\"latency\": \"0.1000000000s\""      \
         "}"     \
 	"}]"
 

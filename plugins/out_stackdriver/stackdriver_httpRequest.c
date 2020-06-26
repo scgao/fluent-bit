@@ -164,7 +164,7 @@ static void validate_latency(msgpack_object_str latency_in_payload, struct httpR
     char *pattern = "^[[:space:]]*[[:digit:]][[:digit:]]*\\(.[[:digit:]][[:digit:]]*\\)\\{0,1\\}[[:space:]]*s[[:space:]]*$";
     regex_t reg;
     int nm = 10;
-    regmatch_t pmatch[nm];
+    regmatch_t pmatch[10];
     int status = 0;
 
     char tmp[latency_in_payload.size];

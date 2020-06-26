@@ -1043,7 +1043,7 @@ static void cb_check_httpRequest_lantency_max(void *ctx, int ffd,
     flb_sds_destroy(res_data);
 }
 
-static void cb_check_httpRequest_lantency_seconds_overflow(void *ctx, int ffd,
+static void cb_check_httpRequest_lantency_overflow(void *ctx, int ffd,
                                                            int res_ret, void *res_data, size_t res_size,
                                                            void *data)
 {
@@ -1059,21 +1059,6 @@ static void cb_check_httpRequest_lantency_seconds_overflow(void *ctx, int ffd,
     flb_sds_destroy(res_data);
 }
 
-static void cb_check_httpRequest_lantency_nanos_overflow(void *ctx, int ffd,
-                                                         int res_ret, void *res_data, size_t res_size,
-                                                         void *data)
-{
-    int ret;
-
-    ret = mp_kv_cmp(res_data, res_size, "$entries[0]['httpRequest']['latency']", "0.1000000000s");
-    TEST_CHECK(ret == FLB_TRUE);
-
-    /* check `httpRequest` has been removed from jsonPayload */
-    ret = mp_kv_exists(res_data, res_size, "$entries[0]['jsonPayload']['logging.googleapis.com/http_request']");
-    TEST_CHECK(ret == FLB_FALSE);
-
-    flb_sds_destroy(res_data);
-}
 
 static void cb_check_httpRequest_latency_incorrect_format(void *ctx, int ffd,
                                                           int res_ret, void *res_data, size_t res_size,
@@ -2132,10 +2117,10 @@ void flb_test_httpRequest_latency_max()
     flb_destroy(ctx);
 }
 
-void flb_test_httpRequest_latency_seconds_overflow()
+void flb_test_httpRequest_latency_overflow()
 {
     int ret;
-    int size = sizeof(HTTPREQUEST_LATENCY_SECONDS_OVERFLOW) - 1;
+    int size = sizeof(HTTPREQUEST_LATENCY_OVERFLOW) - 1;
     flb_ctx_t *ctx;
     int in_ffd;
     int out_ffd;
@@ -2157,7 +2142,7 @@ void flb_test_httpRequest_latency_seconds_overflow()
 
     /* Enable test mode */
     ret = flb_output_set_test(ctx, out_ffd, "formatter",
-                              cb_check_httpRequest_lantency_seconds_overflow,
+                              cb_check_httpRequest_lantency_overflow,
                               NULL);
 
     /* Start */
@@ -2165,47 +2150,7 @@ void flb_test_httpRequest_latency_seconds_overflow()
     TEST_CHECK(ret == 0);
 
     /* Ingest data sample */
-    flb_lib_push(ctx, in_ffd, (char *) HTTPREQUEST_LATENCY_SECONDS_OVERFLOW, size);
-
-    sleep(2);
-    flb_stop(ctx);
-    flb_destroy(ctx);
-}
-
-void flb_test_httpRequest_latency_nanos_overflow()
-{
-    int ret;
-    int size = sizeof(HTTPREQUEST_LATENCY_NANOS_OVERFLOW) - 1;
-    flb_ctx_t *ctx;
-    int in_ffd;
-    int out_ffd;
-
-    /* Create context, flush every second (some checks omitted here) */
-    ctx = flb_create();
-    flb_service_set(ctx, "flush", "1", "grace", "1", NULL);
-
-    /* Lib input mode */
-    in_ffd = flb_input(ctx, (char *) "lib", NULL);
-    flb_input_set(ctx, in_ffd, "tag", "test", NULL);
-
-    /* Stackdriver output */
-    out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
-    flb_output_set(ctx, out_ffd,
-                   "match", "test",
-                   "resource", "gce_instance",
-                   NULL);
-
-    /* Enable test mode */
-    ret = flb_output_set_test(ctx, out_ffd, "formatter",
-                              cb_check_httpRequest_lantency_nanos_overflow,
-                              NULL);
-
-    /* Start */
-    ret = flb_start(ctx);
-    TEST_CHECK(ret == 0);
-
-    /* Ingest data sample */
-    flb_lib_push(ctx, in_ffd, (char *) HTTPREQUEST_LATENCY_NANOS_OVERFLOW, size);
+    flb_lib_push(ctx, in_ffd, (char *) HTTPREQUEST_LATENCY_OVERFLOW, size);
 
     sleep(2);
     flb_stop(ctx);
