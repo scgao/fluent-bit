@@ -582,16 +582,12 @@ static int stackdriver_format(struct flb_config *config,
     int severity_extracted = FLB_FALSE;
     severity_t severity;
 
-    /* Parameters for insertId */
     msgpack_object insertId_obj;
     insertId_status in_status;
     int insertId_extracted = FLB_FALSE;
 
     /* Parameters for Operation */
     flb_sds_t operation_id;
-    flb_sds_t operation_producer;
-    int operation_first = FLB_FALSE;
-    int operation_last = FLB_FALSE;
     int operation_extracted = FLB_FALSE;
     int operation_extra_size = 0;
 
