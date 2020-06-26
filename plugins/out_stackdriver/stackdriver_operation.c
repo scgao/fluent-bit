@@ -113,10 +113,6 @@ int extract_operation(flb_sds_t *operation_id, flb_sds_t *operation_producer,
                         }
                     }
                     else {
-<<<<<<< HEAD
-=======
-                        /* extra sub-fields */ 
->>>>>>> upstream/master
                         *extra_subfields += 1;
                     }
 
