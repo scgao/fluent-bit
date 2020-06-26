@@ -31,10 +31,7 @@
 #include "stackdriver.h"
 #include "stackdriver_conf.h"
 #include "stackdriver_operation.h"
-<<<<<<< HEAD
 #include "stackdriver_sourceLocation.h"
-=======
->>>>>>> upstream/master
 #include <mbedtls/base64.h>
 #include <mbedtls/sha256.h>
 
