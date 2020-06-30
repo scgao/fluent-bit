@@ -1204,6 +1204,9 @@ static int stackdriver_format(struct flb_config *config,
         else if (in_status == INSERTID_NOT_EXISTED) {
             insert_id_extracted = FLB_FALSE;
         }
+        else {
+            continue;
+        }
 
         /* Extract operation */
         operation_id = flb_sds_create("");

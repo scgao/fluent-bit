@@ -22,16 +22,5 @@
         "\"logging.googleapis.com/insertId\": "		\
         "{"           \       
         "}"     \
-	"}]"
+	"}]"			
 
-#define INSERTID_MULTI_ENTRIES	"["		\
-	"1591111124,"			\
-	"{"				\
-        "\"logging.googleapis.com/insertId\": \"test_insertId\" "		\
-	"},"			\
-	"{"				\
-        "\"logging.googleapis.com/insertId\": 123 "		\
-	"},"			\
-	"{"				\
-        "\"logging.googleapis.com/insertId\": \"\" "		\
-	"}]"
