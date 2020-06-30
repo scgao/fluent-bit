@@ -899,6 +899,7 @@ static int stackdriver_format(struct flb_config *config,
     struct flb_time tms;
     msgpack_object *obj;
     msgpack_unpacked result;
+    msgpack_unpacked search_insert_id;
     msgpack_sbuffer mp_sbuf;
     msgpack_packer mp_pck;
     flb_sds_t out_buf;
@@ -935,6 +936,32 @@ static int stackdriver_format(struct flb_config *config,
 
     /* Count number of records */
     array_size = flb_mp_count(data, bytes);
+
+    /* 
+     * Search each entry and validate insertId.
+     * Reject the entry if insertId is invalid.
+     * If all the entries are rejected, stop formatting.
+     * 
+     */
+    off = 0;
+    msgpack_unpacked_init(&search_insert_id);
+    while (msgpack_unpack_next(&search_insert_id, data, bytes, &off) == MSGPACK_UNPACK_SUCCESS) {
+        flb_time_pop_from_msgpack(&tms, &search_insert_id, &obj);
+
+        /* Extract insertId */
+        validate_insert_id(&insert_id_obj, obj, &in_status);
+        if (in_status == INSERTID_INVALID) {
+            flb_error("Incorrect insertId received. InsertId should be non-empty string.");
+            array_size -= 1;
+        }
+    }
+    msgpack_unpacked_destroy(&search_insert_id);
+
+    if (array_size == 0) {
+        flb_error("All the logEntrys are invalid. InsertId should be non-empty string.");
+        *out_size = 0;
+        return -1;
+    }
 
     /* Create temporal msgpack buffer */
     msgpack_sbuffer_init(&mp_sbuf);
@@ -1176,13 +1203,6 @@ static int stackdriver_format(struct flb_config *config,
         }
         else if (in_status == INSERTID_NOT_EXISTED) {
             insert_id_extracted = FLB_FALSE;
-        }
-        else {
-            msgpack_sbuffer_destroy(&mp_sbuf);
-            msgpack_unpacked_destroy(&result);
-            flb_error("Incorrect insertId received. InsertId should be non-empty string.");
-            *out_size = 0;
-            return -1;
         }
 
         /* Extract operation */
