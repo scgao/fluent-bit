@@ -656,10 +656,6 @@ static void cb_check_insert_id_incorrect_type(void *ctx, int ffd,
     flb_sds_destroy(res_data);
 }
 
-static void cb_check_insert_id_multi_entries(void *ctx, int ffd,
-                                             int res_ret, void *res_data, size_t res_size,
-                                             void *data)
-
 static void cb_check_source_location_common_case(void *ctx, int ffd,
                                                  int res_ret, void *res_data, size_t res_size,
                                                  void *data)
