@@ -31,8 +31,6 @@
 #include "stackdriver.h"
 #include "stackdriver_conf.h"
 #include "stackdriver_operation.h"
-#include "stackdriver_source_location.h"
-#include "stackdriver_http_request.h"
 #include "stackdriver_helper.h"
 #include <mbedtls/base64.h>
 #include <mbedtls/sha256.h>
@@ -763,42 +761,8 @@ static int get_stream(msgpack_object_map map)
 
     return STREAM_UNKNOWN;
 }
-
-static insert_id_status validate_insert_id(msgpack_object * insert_id_value, 
-                                           const msgpack_object * obj)                           
-{
-    int i = 0;
-    msgpack_object_kv * p = NULL;
-    insert_id_status ret = INSERTID_NOT_PRESENT;
-
-    if (obj == NULL) {
-        return ret;
-    }
-
-    for (i = 0; i < obj->via.map.size; i++) {
-        p = &obj->via.map.ptr[i];
-        if (p->key.type != MSGPACK_OBJECT_STR) {
-            continue;
-        }
-        if (cmp_str_helper(p->key, INSERTID_IN_JSON, sizeof(INSERTID_IN_JSON) - 1)) {
-            if (p->val.type == MSGPACK_OBJECT_STR && p->val.via.str.size > 0) {
-                *insert_id_value = p->val;
-                ret = INSERTID_VALID;
-            }
-            else {
-                ret = INSERTID_INVALID;
-            }
-            break;
-        }
-    }
-    return ret;
-}
                                                                                         
-static int pack_json_payload(int insert_id_extracted, 
-                             int operation_extracted, int operation_extra_size, 
-                             int source_location_extracted, 
-                             int source_location_extra_size,
-                             int http_request_extracted, int http_request_extra_size, 
+static int pack_json_payload(int operation_extracted, int operation_extra_size, 
                              msgpack_packer *mp_pck, msgpack_object *obj,
                              struct flb_stackdriver *ctx)
 {
@@ -828,16 +792,7 @@ static int pack_json_payload(int insert_id_extracted,
         /* more special fields are required to be added */
     };
 
-    if(insert_id_extracted == FLB_TRUE) {
-        to_remove += 1;
-    }
     if(operation_extracted == FLB_TRUE && operation_extra_size == 0) {
-        to_remove += 1;
-    }
-    if(source_location_extracted == FLB_TRUE && source_location_extra_size == 0) {
-        to_remove += 1;
-    }
-    if(http_request_extracted == FLB_TRUE && http_request_extra_size == 0) {
         to_remove += 1;
     }
 
@@ -878,11 +833,6 @@ static int pack_json_payload(int insert_id_extracted,
     for(; kv != kvend; ++kv	) {
         key_not_found = 1;
         
-        if (insert_id_extracted == FLB_TRUE 
-            && cmp_str_helper(kv->key, INSERTID_IN_JSON, sizeof(INSERTID_IN_JSON) - 1) ) {
-            continue;
-        }
-        
         if (cmp_str_helper(kv->key, OPERATION_FIELD_IN_JSON, 
                            sizeof(OPERATION_FIELD_IN_JSON) - 1)
             && kv->val.type == MSGPACK_OBJECT_MAP) {
@@ -890,30 +840,6 @@ static int pack_json_payload(int insert_id_extracted,
             if (operation_extra_size > 0) {
                 msgpack_pack_object(mp_pck, kv->key);
                 pack_extra_operation_subfields(mp_pck, &kv->val, operation_extra_size);
-            }
-            continue;
-        }
-
-        if (cmp_str_helper(kv->key, SOURCELOCATION_FIELD_IN_JSON, 
-                           sizeof(SOURCELOCATION_FIELD_IN_JSON) - 1) 
-            && kv->val.type == MSGPACK_OBJECT_MAP) {
-
-            if(source_location_extra_size > 0) {
-                msgpack_pack_object(mp_pck, kv->key);
-                pack_extra_source_location_subfields(mp_pck, &kv->val, 
-                                                     source_location_extra_size);
-            }
-            continue;
-        }
-                                                                                        
-        if (cmp_str_helper(kv->key, HTTPREQUEST_FIELD_IN_JSON, 
-                           sizeof(HTTPREQUEST_FIELD_IN_JSON) - 1) 
-            && kv->val.type == MSGPACK_OBJECT_MAP) {
-
-            if(http_request_extra_size > 0) {
-                msgpack_pack_object(mp_pck, kv->key);
-                pack_extra_http_request_subfields(mp_pck, &kv->val, 
-                                                  http_request_extra_size);
             }
             continue;
         }
@@ -978,11 +904,6 @@ static int stackdriver_format(struct flb_config *config,
     int severity_extracted = FLB_FALSE;
     severity_t severity;
 
-    /* Parameters for insertId */
-    msgpack_object insert_id_obj;
-    insert_id_status in_status;
-    int insert_id_extracted = FLB_FALSE;
-
     /* Parameters for Operation */
     flb_sds_t operation_id;
     flb_sds_t operation_producer;
@@ -991,46 +912,8 @@ static int stackdriver_format(struct flb_config *config,
     int operation_extracted = FLB_FALSE;
     int operation_extra_size = 0;
 
-    /* Parameters for sourceLocation */
-    flb_sds_t source_location_file;
-    int64_t source_location_line = 0;
-    flb_sds_t source_location_function;
-    int source_location_extracted = FLB_FALSE;
-    int source_location_extra_size = 0;
-
-    /* Parameters for httpRequest */
-    struct http_request_field http_request;
-    int http_request_extracted = FLB_FALSE;
-    int http_request_extra_size = 0;
-
     /* Count number of records */
     array_size = flb_mp_count(data, bytes);
-
-    /* 
-     * Search each entry and validate insertId.
-     * Reject the entry if insertId is invalid.
-     * If all the entries are rejected, stop formatting.
-     * 
-     */
-    off = 0;
-    msgpack_unpacked_init(&result);
-    while (msgpack_unpack_next(&result, data, bytes, &off) == MSGPACK_UNPACK_SUCCESS) {
-        flb_time_pop_from_msgpack(&tms, &result, &obj);
-
-        /* Extract insertId */
-        in_status = validate_insert_id(&insert_id_obj, obj);
-        if (in_status == INSERTID_INVALID) {
-            flb_plg_error(ctx->ins, 
-                          "Incorrect insertId received. InsertId should be non-empty string.");
-            array_size -= 1;
-        }
-    }
-    msgpack_unpacked_destroy(&result);
-
-    if (array_size == 0) {
-        *out_size = 0;
-        return -1;
-    }
 
     /* Create temporal msgpack buffer */
     msgpack_sbuffer_init(&mp_sbuf);
@@ -1266,19 +1149,6 @@ static int stackdriver_format(struct flb_config *config,
             entry_size += 1;
         }
 
-        /* Extract insertId */
-        in_status = validate_insert_id(&insert_id_obj, obj);
-        if (in_status == INSERTID_VALID) {
-            insert_id_extracted = FLB_TRUE;
-            entry_size += 1;
-        }
-        else if (in_status == INSERTID_NOT_PRESENT) {
-            insert_id_extracted = FLB_FALSE;
-        }
-        else {
-            continue;
-        }
-
         /* Extract operation */
         operation_id = flb_sds_create("");
         operation_producer = flb_sds_create("");
@@ -1306,45 +1176,12 @@ static int stackdriver_format(struct flb_config *config,
             }
             entry_size += 1;
         }
-        
-        /* Extract sourceLocation */
-        source_location_file = flb_sds_create("");
-        source_location_function = flb_sds_create("");
-        source_location_line = 0;
-        source_location_extra_size = 0;
-        source_location_extracted = extract_source_location(&source_location_file, 
-                                                            &source_location_line,
-                                                            &source_location_function, 
-                                                            obj, 
-                                                            &source_location_extra_size);
-        
-        if (source_location_extracted == FLB_TRUE) {
-            entry_size += 1;
-        }
-
-        /* Extract httpRequest */
-        init_http_request(&http_request);
-        http_request_extra_size = 0;
-        http_request_extracted = extract_http_request(&http_request, obj, 
-                                                      &http_request_extra_size);
-        if (http_request_extracted == FLB_TRUE) {
-            entry_size += 1;
-        }
-
-        msgpack_pack_map(&mp_pck, entry_size);
 
         /* Add severity into the log entry */
         if (severity_extracted == FLB_TRUE) {
             msgpack_pack_str(&mp_pck, 8);
             msgpack_pack_str_body(&mp_pck, "severity", 8);
             msgpack_pack_int(&mp_pck, severity);
-        }
-
-        /* Add insertId field into the log entry */
-        if (insert_id_extracted == FLB_TRUE) {
-            msgpack_pack_str(&mp_pck, 8);
-            msgpack_pack_str_body(&mp_pck, "insertId", 8);
-            msgpack_pack_object(&mp_pck, insert_id_obj);
         }
 
         /* Add operation field into the log entry */
@@ -1360,31 +1197,15 @@ static int stackdriver_format(struct flb_config *config,
             msgpack_pack_object(&mp_pck, *labels_ptr);
         }
         
-        /* Add sourceLocation field into the log entry */
-        if (source_location_extracted == FLB_TRUE) {
-            add_source_location_field(&source_location_file, source_location_line, 
-                                      &source_location_function, &mp_pck);
-        }
-
-        /* Add httpRequest field into the log entry */
-        if (http_request_extracted == FLB_TRUE) {
-            add_http_request_field(&http_request, &mp_pck);
-        }
-        
         /* Clean up */
         flb_sds_destroy(operation_id);
         flb_sds_destroy(operation_producer);
-        flb_sds_destroy(source_location_file);
-        flb_sds_destroy(source_location_function);
-        destroy_http_request(&http_request);
 
         /* jsonPayload */
         msgpack_pack_str(&mp_pck, 11);
         msgpack_pack_str_body(&mp_pck, "jsonPayload", 11);
-        pack_json_payload(insert_id_extracted, operation_extracted, 
-                          operation_extra_size, source_location_extracted, 
-                          source_location_extra_size, http_request_extracted, 
-                          http_request_extra_size, &mp_pck, obj, ctx);
+        pack_json_payload(operation_extracted, operation_extra_size, 
+                          &mp_pck, obj, ctx);
 
         /* avoid modifying the original tag */
         newtag = tag;
