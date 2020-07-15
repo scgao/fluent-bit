@@ -37,11 +37,24 @@ static void try_assign_time(long long seconds, long long nanos,
     }
 }
 
+static long long get_seconds_or_nanos(msgpack_object obj)
+{
+    if (obj.type == MSGPACK_OBJECT_POSITIVE_INTEGER) {
+        return obj.via.i64;
+    }
+    else if (obj.type == MSGPACK_OBJECT_STR 
+             && is_integer(obj.via.str.ptr, 
+                           obj.via.str.size)) {
+        return atoll(obj.via.str.ptr);
+    }
+    return 0;
+}
+
 static int extract_format_timestamp(msgpack_object *obj,
                                     struct flb_time *tms)
 {
-    int format_timestamp_seconds_found = FLB_FALSE;
-    int format_timestamp_nanos_found = FLB_FALSE;
+    int seconds_found = FLB_FALSE;
+    int nanos_found = FLB_FALSE;
     long long seconds = 0;
     long long nanos = 0;
 
@@ -67,40 +80,19 @@ static int extract_format_timestamp(msgpack_object *obj,
 
         for (; tmp_p < tmp_pend; ++tmp_p) {
             if (validate_key(tmp_p->key, "seconds", 7)) {
-                format_timestamp_seconds_found = FLB_TRUE;
-                if (tmp_p->val.type == MSGPACK_OBJECT_POSITIVE_INTEGER) {
-                    seconds = tmp_p->val.via.i64;
-                }
-                else if (tmp_p->val.type == MSGPACK_OBJECT_STR 
-                         && is_integer(tmp_p->val.via.str.ptr, 
-                                       tmp_p->val.via.str.size)) {
-                    seconds = atoll(tmp_p->val.via.str.ptr);
-                }
-                else {
-                    seconds = 0;
-                }
+                seconds_found = FLB_TRUE;
+                seconds = get_seconds_or_nanos(tmp_p->val);
                 
-                if (format_timestamp_nanos_found == FLB_TRUE) {
+                if (nanos_found == FLB_TRUE) {
                     try_assign_time(seconds, nanos, tms);
                     return FLB_TRUE;
                 }
             }
             else if (validate_key(tmp_p->key, "nanos", 5)) {
-                format_timestamp_nanos_found = FLB_TRUE;
+                nanos_found = FLB_TRUE;
+                nanos = get_seconds_or_nanos(tmp_p->val);
 
-                if (tmp_p->val.type == MSGPACK_OBJECT_POSITIVE_INTEGER) {
-                    nanos = tmp_p->val.via.i64;
-                }
-                else if (tmp_p->val.type == MSGPACK_OBJECT_STR 
-                         && is_integer(tmp_p->val.via.str.ptr, 
-                                       tmp_p->val.via.str.size)) {
-                    nanos = atoll(tmp_p->val.via.str.ptr);
-                }
-                else {
-                    nanos = 0;
-                }
-
-                if (format_timestamp_seconds_found == FLB_TRUE) {
+                if (seconds_found == FLB_TRUE) {
                     try_assign_time(seconds, nanos, tms);
                     return FLB_TRUE;
                 }
@@ -110,12 +102,56 @@ static int extract_format_timestamp(msgpack_object *obj,
     return FLB_FALSE;
 }
 
+static int extract_format_timestampSeconds(msgpack_object *obj,
+                                           struct flb_time *tms)
+{
+    int seconds_found = FLB_FALSE;
+    int nanos_found = FLB_FALSE;
+    long long seconds = 0;
+    long long nanos = 0;
+
+    msgpack_object_kv *p;
+    msgpack_object_kv *pend;
+
+    if (obj->via.map.size == 0) {    	
+        return FLB_FALSE;
+    }
+    p = obj->via.map.ptr;
+    pend = obj->via.map.ptr + obj->via.map.size;
+
+    for (; p < pend; ++p) {
+        if (validate_key(p->key, "timestampSeconds", 16)) {
+            seconds_found = FLB_TRUE;
+            seconds = get_seconds_or_nanos(p->val);
+
+            if (nanos_found == FLB_TRUE) {
+                try_assign_time(seconds, nanos, tms);
+                return FLB_TRUE;
+            }
+        }
+        else if (validate_key(p->key, "timestampNanos", 14)) {
+            nanos_found = FLB_TRUE;
+            nanos = get_seconds_or_nanos(p->val);
+
+            if (seconds_found == FLB_TRUE) {
+                try_assign_time(seconds, nanos, tms);
+                return FLB_TRUE;
+            }
+        } 
+    }
+
+    return FLB_FALSE;
+}
+
 timestamp_status extract_timestamp(msgpack_object *obj,
                                    struct flb_time *tms,
                                    flb_sds_t time)
 {
     if (extract_format_timestamp(obj, tms)) {
         return FORMAT_TIMESTAMP;
+    }
+    if (extract_format_timestampSeconds(obj, tms)) {
+        return FORMAT_TIMESTAMPSECONDS;
     }
     return TIMESTAMP_NOT_PRESENT;
 }

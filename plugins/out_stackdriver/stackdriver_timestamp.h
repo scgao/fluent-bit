@@ -35,6 +35,17 @@ typedef enum {
     FORMAT_INVALID_TIME = 6
 }timestamp_status;
 
+/* 
+ * If timestamp field is not existed, return TIMESTAMP_NOT_PRESENT 
+ * If timestamp format is "timestamp":{"seconds", "nanos"}, 
+ * set the time and return FORMAT_TIMESTAMP
+ * 
+ * If timestamp format is "timestampSeconds"/"timestampNanos", 
+ * set the time and return FORMAT_TIMESTAMPSECONDS
+ * 
+ * If timestamp format is "time", 
+ * assign the time to flb_sds_t time and return FORMAT_TIME
+ */
 timestamp_status extract_timestamp(msgpack_object *obj,
                                    struct flb_time *tms,
                                    flb_sds_t time);

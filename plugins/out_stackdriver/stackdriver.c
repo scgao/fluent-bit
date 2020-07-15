@@ -802,7 +802,7 @@ static int pack_json_payload(int operation_extracted, int operation_extra_size,
         to_remove += 1;
     }
     if (tms_status == FORMAT_TIMESTAMPSECONDS) {
-        to_remove += 1;
+        to_remove += 2;
     }
 
     map_size = obj->via.map.size;
@@ -850,7 +850,18 @@ static int pack_json_payload(int operation_extracted, int operation_extra_size,
         if (validate_key(kv->key, "timestamp", 9)
             && kv->val.type == MSGPACK_OBJECT_MAP
             && tms_status == FORMAT_TIMESTAMP) {
-            
+
+            continue;
+        }
+
+        if (validate_key(kv->key, "timestampSeconds", 16)
+            && tms_status == FORMAT_TIMESTAMPSECONDS) {
+
+            continue;
+        }
+        if (validate_key(kv->key, "timestampNanos", 14)
+            && tms_status == FORMAT_TIMESTAMPSECONDS) {
+                
             continue;
         }
 
@@ -1192,6 +1203,10 @@ static int stackdriver_format(struct flb_config *config,
             entry_size += 1;
         }
 
+        /* Extract timestamp */
+        format_time = flb_sds_create("");
+        tms_status = extract_timestamp(obj, &tms, format_time);
+
         msgpack_pack_map(&mp_pck, entry_size);
 
         /* Add severity into the log entry */
@@ -1213,9 +1228,6 @@ static int stackdriver_format(struct flb_config *config,
             msgpack_pack_str_body(&mp_pck, "labels", 6);
             msgpack_pack_object(&mp_pck, *labels_ptr);
         }
-
-        format_time = flb_sds_create("");
-        tms_status = extract_timestamp(obj, &tms, format_time);
         
         /* Clean up */
         flb_sds_destroy(operation_id);
