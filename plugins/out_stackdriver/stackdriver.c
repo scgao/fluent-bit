@@ -31,6 +31,7 @@
 #include "stackdriver.h"
 #include "stackdriver_conf.h"
 #include "stackdriver_operation.h"
+#include "stackdriver_timestamp.h"
 #include "stackdriver_helper.h"
 #include <mbedtls/base64.h>
 #include <mbedtls/sha256.h>
@@ -763,7 +764,8 @@ static int get_stream(msgpack_object_map map)
 }
 
                                                                                         
-static int pack_json_payload(int operation_extracted, int operation_extra_size, 
+static int pack_json_payload(int operation_extracted, int operation_extra_size,
+                             timestamp_status tms_status,
                              msgpack_packer *mp_pck, msgpack_object *obj,
                              struct flb_stackdriver *ctx)
 {
@@ -794,6 +796,12 @@ static int pack_json_payload(int operation_extracted, int operation_extra_size,
     };
 
     if(operation_extracted == FLB_TRUE && operation_extra_size == 0) {
+        to_remove += 1;
+    }
+    if (tms_status == FORMAT_TIME || tms_status == FORMAT_TIMESTAMP) {
+        to_remove += 1;
+    }
+    if (tms_status == FORMAT_TIMESTAMPSECONDS) {
         to_remove += 1;
     }
 
@@ -836,6 +844,13 @@ static int pack_json_payload(int operation_extracted, int operation_extra_size,
                 msgpack_pack_object(mp_pck, kv->key);
                 pack_extra_operation_subfields(mp_pck, &kv->val, operation_extra_size);
             }
+            continue;
+        }
+
+        if (validate_key(kv->key, "timestamp", 9)
+            && kv->val.type == MSGPACK_OBJECT_MAP
+            && tms_status == FORMAT_TIMESTAMP) {
+            
             continue;
         }
 
@@ -906,6 +921,10 @@ static int stackdriver_format(struct flb_config *config,
     int operation_last = FLB_FALSE;
     int operation_extracted = FLB_FALSE;
     int operation_extra_size = 0;
+
+    /* Parameters for Timestamp */
+    flb_sds_t format_time;
+    timestamp_status tms_status;
 
     /* Count number of records */
     array_size = flb_mp_count(data, bytes);
@@ -1194,6 +1213,9 @@ static int stackdriver_format(struct flb_config *config,
             msgpack_pack_str_body(&mp_pck, "labels", 6);
             msgpack_pack_object(&mp_pck, *labels_ptr);
         }
+
+        format_time = flb_sds_create("");
+        tms_status = extract_timestamp(obj, &tms, format_time);
         
         /* Clean up */
         flb_sds_destroy(operation_id);
@@ -1203,7 +1225,7 @@ static int stackdriver_format(struct flb_config *config,
         msgpack_pack_str(&mp_pck, 11);
         msgpack_pack_str_body(&mp_pck, "jsonPayload", 11);
         pack_json_payload(operation_extracted, operation_extra_size, 
-                          &mp_pck, obj, ctx);
+                          tms_status, &mp_pck, obj, ctx);
 
         /* avoid modifying the original tag */
         newtag = tag;
@@ -1230,12 +1252,16 @@ static int stackdriver_format(struct flb_config *config,
         msgpack_pack_str_body(&mp_pck, "timestamp", 9);
 
         /* Format the time */
-        gmtime_r(&tms.tm.tv_sec, &tm);
-        s = strftime(time_formatted, sizeof(time_formatted) - 1,
-                     FLB_STD_TIME_FMT, &tm);
-        len = snprintf(time_formatted + s, sizeof(time_formatted) - 1 - s,
-                       ".%09" PRIu64 "Z", (uint64_t) tms.tm.tv_nsec);
-        s += len;
+        if (tms_status != FORMAT_TIME) {
+            gmtime_r(&tms.tm.tv_sec, &tm);
+            s = strftime(time_formatted, sizeof(time_formatted) - 1,
+                         FLB_STD_TIME_FMT, &tm);
+            len = snprintf(time_formatted + s, sizeof(time_formatted) - 1 - s,
+                           ".%09" PRIu64 "Z", (uint64_t) tms.tm.tv_nsec);
+            s += len;
+        }
+
+        flb_sds_destroy(format_time);
 
         msgpack_pack_str(&mp_pck, s);
         msgpack_pack_str_body(&mp_pck, time_formatted, s);
