@@ -25,14 +25,9 @@
 
 typedef enum {
     TIMESTAMP_NOT_PRESENT = 0,
-    FORMAT_TIMESTAMP = 1,
-    FORMAT_TIMESTAMPSECONDS = 2,
-    FORMAT_TIME = 3,
-
-    /* used for removing subfield */
-    FORMAT_INVALID_TIMESTAMP = 4,
-    FORMAT_INVALID_TIMESTAMPSECONDS = 5,
-    FORMAT_INVALID_TIME = 6
+    FORMAT_TIMESTAMP_OBJECT = 1,
+    FORMAT_TIMESTAMP_DUO_FIELDS = 2,
+    FORMAT_TIME = 3
 }timestamp_status;
 
 /* 

@@ -29,15 +29,15 @@ static int is_integer(char *str, int size) {
 }
 
 static void try_assign_time(long long seconds, long long nanos, 
-                        struct flb_time *tms)
+                            struct flb_time *tms)
 {
-    if (seconds != 0 || nanos != 0) {
+    if (seconds != 0) {
         tms->tm.tv_sec = seconds;
         tms->tm.tv_nsec = nanos;    
     }
 }
 
-static long long get_seconds_or_nanos(msgpack_object obj)
+static long long get_integer(msgpack_object obj)
 {
     if (obj.type == MSGPACK_OBJECT_POSITIVE_INTEGER) {
         return obj.via.i64;
@@ -50,8 +50,8 @@ static long long get_seconds_or_nanos(msgpack_object obj)
     return 0;
 }
 
-static int extract_format_timestamp(msgpack_object *obj,
-                                    struct flb_time *tms)
+static int extract_format_timestamp_object(msgpack_object *obj,
+                                           struct flb_time *tms)
 {
     int seconds_found = FLB_FALSE;
     int nanos_found = FLB_FALSE;
@@ -81,7 +81,7 @@ static int extract_format_timestamp(msgpack_object *obj,
         for (; tmp_p < tmp_pend; ++tmp_p) {
             if (validate_key(tmp_p->key, "seconds", 7)) {
                 seconds_found = FLB_TRUE;
-                seconds = get_seconds_or_nanos(tmp_p->val);
+                seconds = get_integer(tmp_p->val);
                 
                 if (nanos_found == FLB_TRUE) {
                     try_assign_time(seconds, nanos, tms);
@@ -90,7 +90,7 @@ static int extract_format_timestamp(msgpack_object *obj,
             }
             else if (validate_key(tmp_p->key, "nanos", 5)) {
                 nanos_found = FLB_TRUE;
-                nanos = get_seconds_or_nanos(tmp_p->val);
+                nanos = get_integer(tmp_p->val);
 
                 if (seconds_found == FLB_TRUE) {
                     try_assign_time(seconds, nanos, tms);
@@ -102,8 +102,8 @@ static int extract_format_timestamp(msgpack_object *obj,
     return FLB_FALSE;
 }
 
-static int extract_format_timestampSeconds(msgpack_object *obj,
-                                           struct flb_time *tms)
+static int extract_format_timestamp_duo_fields(msgpack_object *obj,
+                                               struct flb_time *tms)
 {
     int seconds_found = FLB_FALSE;
     int nanos_found = FLB_FALSE;
@@ -122,7 +122,7 @@ static int extract_format_timestampSeconds(msgpack_object *obj,
     for (; p < pend; ++p) {
         if (validate_key(p->key, "timestampSeconds", 16)) {
             seconds_found = FLB_TRUE;
-            seconds = get_seconds_or_nanos(p->val);
+            seconds = get_integer(p->val);
 
             if (nanos_found == FLB_TRUE) {
                 try_assign_time(seconds, nanos, tms);
@@ -131,7 +131,7 @@ static int extract_format_timestampSeconds(msgpack_object *obj,
         }
         else if (validate_key(p->key, "timestampNanos", 14)) {
             nanos_found = FLB_TRUE;
-            nanos = get_seconds_or_nanos(p->val);
+            nanos = get_integer(p->val);
 
             if (seconds_found == FLB_TRUE) {
                 try_assign_time(seconds, nanos, tms);
@@ -147,11 +147,11 @@ timestamp_status extract_timestamp(msgpack_object *obj,
                                    struct flb_time *tms,
                                    flb_sds_t time)
 {
-    if (extract_format_timestamp(obj, tms)) {
-        return FORMAT_TIMESTAMP;
+    if (extract_format_timestamp_object(obj, tms)) {
+        return FORMAT_TIMESTAMP_OBJECT;
     }
-    if (extract_format_timestampSeconds(obj, tms)) {
-        return FORMAT_TIMESTAMPSECONDS;
+    if (extract_format_timestamp_duo_fields(obj, tms)) {
+        return FORMAT_TIMESTAMP_DUO_FIELDS;
     }
     return TIMESTAMP_NOT_PRESENT;
 }

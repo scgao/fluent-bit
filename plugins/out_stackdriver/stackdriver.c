@@ -798,10 +798,10 @@ static int pack_json_payload(int operation_extracted, int operation_extra_size,
     if(operation_extracted == FLB_TRUE && operation_extra_size == 0) {
         to_remove += 1;
     }
-    if (tms_status == FORMAT_TIME || tms_status == FORMAT_TIMESTAMP) {
+    if (tms_status == FORMAT_TIME || tms_status == FORMAT_TIMESTAMP_OBJECT) {
         to_remove += 1;
     }
-    if (tms_status == FORMAT_TIMESTAMPSECONDS) {
+    if (tms_status == FORMAT_TIMESTAMP_DUO_FIELDS) {
         to_remove += 2;
     }
 
@@ -849,18 +849,18 @@ static int pack_json_payload(int operation_extracted, int operation_extra_size,
 
         if (validate_key(kv->key, "timestamp", 9)
             && kv->val.type == MSGPACK_OBJECT_MAP
-            && tms_status == FORMAT_TIMESTAMP) {
+            && tms_status == FORMAT_TIMESTAMP_OBJECT) {
 
             continue;
         }
 
         if (validate_key(kv->key, "timestampSeconds", 16)
-            && tms_status == FORMAT_TIMESTAMPSECONDS) {
+            && tms_status == FORMAT_TIMESTAMP_DUO_FIELDS) {
 
             continue;
         }
         if (validate_key(kv->key, "timestampNanos", 14)
-            && tms_status == FORMAT_TIMESTAMPSECONDS) {
+            && tms_status == FORMAT_TIMESTAMP_DUO_FIELDS) {
                 
             continue;
         }
