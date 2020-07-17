@@ -18,6 +18,13 @@
 #include "stackdriver.h"
 #include "stackdriver_helper.h"
 #include "stackdriver_timestamp.h"
+#include <fluent-bit/flb_regex.h>
+
+#define format_time_pattern "^([1-9]\\d{3}-((0[1-9]|1[0-2])-"  \
+                            "(0[1-9]|1\\d|2[0-8])|(0[13-9]|1[0-2])-"   \
+                            "(29|30)|(0[13578]|1[02])-31))T"   \
+                            "([01]\\d|2[0-3])\:[0-5]\\d\:[0-5]\\d" \
+                            "(.\\d+)?(Z|[+-][01]\\d\:[0-5]\\d)$"
 
 static int is_integer(char *str, int size) {
     for (int i = 0; i < size; ++ i) {
@@ -144,8 +151,18 @@ static int extract_format_timestamp_duo_fields(msgpack_object *obj,
 }
 
 static int validate_format_time(char *str, int size)
-{
-    return FLB_TRUE;
+{   
+    struct flb_regex *regex;
+    int status = 0;
+
+    regex = flb_regex_create(format_time_pattern);
+    status = flb_regex_match(regex, str, size);
+    flb_regex_destroy(regex);
+
+    if (status == 1) {
+        return FLB_TRUE;
+    }
+    return FLB_FALSE;
 }
 
 static timestamp_status extract_format_time(msgpack_object *obj,
