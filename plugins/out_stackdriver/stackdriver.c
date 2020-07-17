@@ -798,7 +798,9 @@ static int pack_json_payload(int operation_extracted, int operation_extra_size,
     if(operation_extracted == FLB_TRUE && operation_extra_size == 0) {
         to_remove += 1;
     }
-    if (tms_status == FORMAT_TIME || tms_status == FORMAT_TIMESTAMP_OBJECT) {
+    if (tms_status == FORMAT_TIME 
+        || tms_status == INVALID_FORMAT_TIME
+        || tms_status == FORMAT_TIMESTAMP_OBJECT) {
         to_remove += 1;
     }
     if (tms_status == FORMAT_TIMESTAMP_DUO_FIELDS) {
@@ -862,6 +864,12 @@ static int pack_json_payload(int operation_extracted, int operation_extra_size,
         if (validate_key(kv->key, "timestampNanos", 14)
             && tms_status == FORMAT_TIMESTAMP_DUO_FIELDS) {
                 
+            continue;
+        }
+
+        if (validate_key(kv->key, "time", 4)
+            && (tms_status == FORMAT_TIME || tms_status == INVALID_FORMAT_TIME)) {
+
             continue;
         }
 
@@ -1264,19 +1272,31 @@ static int stackdriver_format(struct flb_config *config,
         msgpack_pack_str_body(&mp_pck, "timestamp", 9);
 
         /* Format the time */
-        if (tms_status != FORMAT_TIME) {
+        /* If format is timestamp_object or timestamp_duo_fields, 
+         * tms has been updated. 
+         * 
+         * If timestamp is not present or format is invalid_format_time,
+         * use the default tms(current time).
+         * 
+         * If format is time, directly use the flb_sds_t format_time.
+         */
+        if (tms_status == FORMAT_TIME) {
+            msgpack_pack_str(&mp_pck, flb_sds_len(format_time));
+            msgpack_pack_str_body(&mp_pck, format_time, flb_sds_len(format_time));
+        }
+        else {
             gmtime_r(&tms.tm.tv_sec, &tm);
             s = strftime(time_formatted, sizeof(time_formatted) - 1,
                          FLB_STD_TIME_FMT, &tm);
             len = snprintf(time_formatted + s, sizeof(time_formatted) - 1 - s,
                            ".%09" PRIu64 "Z", (uint64_t) tms.tm.tv_nsec);
             s += len;
+
+            msgpack_pack_str(&mp_pck, s);
+            msgpack_pack_str_body(&mp_pck, time_formatted, s);
         }
 
         flb_sds_destroy(format_time);
-
-        msgpack_pack_str(&mp_pck, s);
-        msgpack_pack_str_body(&mp_pck, time_formatted, s);
     }
 
     /* Convert from msgpack to JSON */

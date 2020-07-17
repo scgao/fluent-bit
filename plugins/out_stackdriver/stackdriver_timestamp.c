@@ -143,6 +143,40 @@ static int extract_format_timestamp_duo_fields(msgpack_object *obj,
     return FLB_FALSE;
 }
 
+static int validate_format_time(char *str, int size)
+{
+    return FLB_TRUE;
+}
+
+static timestamp_status extract_format_time(msgpack_object *obj,
+                                            flb_sds_t time)
+{
+    msgpack_object_kv *p;
+    msgpack_object_kv *pend;
+
+    if (obj->via.map.size == 0) {    	
+        return TIMESTAMP_NOT_PRESENT;
+    }
+    p = obj->via.map.ptr;
+    pend = obj->via.map.ptr + obj->via.map.size;
+
+    for (; p < pend; ++p) {
+        if (validate_key(p->key, "time", 4)) {
+            if (p->val.type == MSGPACK_OBJECT_STR
+                && validate_format_time(p->val.via.str.ptr, 
+                                        p->val.via.str.size)) {
+                
+                time = flb_sds_copy(time, p->val.via.str.ptr, 
+                                    p->val.via.str.size);
+                return FORMAT_TIME;
+            }
+            return INVALID_FORMAT_TIME;
+        }
+    }
+    
+    return TIMESTAMP_NOT_PRESENT;
+}
+
 timestamp_status extract_timestamp(msgpack_object *obj,
                                    struct flb_time *tms,
                                    flb_sds_t time)
@@ -153,5 +187,5 @@ timestamp_status extract_timestamp(msgpack_object *obj,
     if (extract_format_timestamp_duo_fields(obj, tms)) {
         return FORMAT_TIMESTAMP_DUO_FIELDS;
     }
-    return TIMESTAMP_NOT_PRESENT;
+    return extract_format_time(obj, time);
 }

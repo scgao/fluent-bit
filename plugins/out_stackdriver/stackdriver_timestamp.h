@@ -27,7 +27,8 @@ typedef enum {
     TIMESTAMP_NOT_PRESENT = 0,
     FORMAT_TIMESTAMP_OBJECT = 1,
     FORMAT_TIMESTAMP_DUO_FIELDS = 2,
-    FORMAT_TIME = 3
+    FORMAT_TIME = 3,
+    INVALID_FORMAT_TIME = 4
 }timestamp_status;
 
 /* 
