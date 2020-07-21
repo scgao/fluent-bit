@@ -34,6 +34,7 @@
 #include "data/stackdriver/stackdriver_test_operation.h"
 #include "data/stackdriver/stackdriver_test_k8s_resource.h"
 #include "data/stackdriver/stackdriver_test_labels.h"
+#include "data/stackdriver/stackdriver_test_timestamp.h"
 
 /*
  * Fluent Bit Stackdriver plugin, always set as payload a JSON strings contained in a
@@ -816,6 +817,23 @@ static void cb_check_multi_entries_severity(void *ctx, int ffd,
     flb_sds_destroy(res_data);
 }
 
+static void cb_check_timestamp_format_object_common_case(void *ctx, int ffd,
+                                                         int res_ret, void *res_data, size_t res_size,
+                                                         void *data)
+{
+    int ret;
+
+    ret = mp_kv_cmp(res_data, res_size, "$entries[0]['timestamp']", "2020-07-21T16:40:42.000012345Z");
+    TEST_CHECK(ret == FLB_TRUE);
+
+    /* check `timestamp` has been removed from jsonPayload */
+    ret = mp_kv_exists(res_data, res_size, "$entries[0]['jsonPayload']['timestamp']");
+    TEST_CHECK(ret == FLB_FALSE);
+
+    flb_sds_destroy(res_data);
+}
+
+
 void flb_test_resource_global()
 {
     int ret;
@@ -1479,6 +1497,46 @@ void flb_test_multi_entries_severity()
     flb_stop(ctx);
     flb_destroy(ctx);
 }
+                              
+void flb_test_timestamp_format_object_common()
+{
+    int ret;
+    int size = sizeof(TIMESTAMP_FORMAT_OBJECT_COMMON_CASE) - 1;
+    flb_ctx_t *ctx;
+    int in_ffd;
+    int out_ffd;
+
+    /* Create context, flush every second (some checks omitted here) */
+    ctx = flb_create();
+    flb_service_set(ctx, "flush", "1", "grace", "1", NULL);
+
+    /* Lib input mode */
+    in_ffd = flb_input(ctx, (char *) "lib", NULL);
+    flb_input_set(ctx, in_ffd, "tag", "test", NULL);
+
+    /* Stackdriver output */
+    out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
+    flb_output_set(ctx, out_ffd,
+                   "match", "test",
+                   "resource", "gce_instance",
+                   NULL);
+
+    /* Enable test mode */
+    ret = flb_output_set_test(ctx, out_ffd, "formatter",
+                              cb_check_timestamp_format_object_common_case,
+                              NULL, NULL);
+
+    /* Start */
+    ret = flb_start(ctx);
+    TEST_CHECK(ret == 0);
+
+    /* Ingest data sample */
+    flb_lib_push(ctx, in_ffd, (char *) TIMESTAMP_FORMAT_OBJECT_COMMON_CASE, size);
+
+    sleep(2);
+    flb_stop(ctx);
+    flb_destroy(ctx);
+}
 
 /* Test list */
 TEST_LIST = {
@@ -1503,5 +1561,7 @@ TEST_LIST = {
     {"default_labels_k8s_resource_type", flb_test_default_labels_k8s_resource_type },
     {"custom_labels_k8s_resource_type", flb_test_custom_labels_k8s_resource_type },
 
+    /* test timestamp */
+    {"Timestamp_format_object_common_case", flb_test_timestamp_format_object_common},
     {NULL, NULL}
 };
