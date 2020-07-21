@@ -841,7 +841,6 @@ static int pack_json_payload(int operation_extracted, int operation_extra_size,
         if (validate_key(kv->key, OPERATION_FIELD_IN_JSON, 
                          OPERATION_KEY_SIZE)
             && kv->val.type == MSGPACK_OBJECT_MAP) {
-
             if (operation_extra_size > 0) {
                 msgpack_pack_object(mp_pck, kv->key);
                 pack_extra_operation_subfields(mp_pck, &kv->val, operation_extra_size);
@@ -852,24 +851,20 @@ static int pack_json_payload(int operation_extracted, int operation_extra_size,
         if (validate_key(kv->key, "timestamp", 9)
             && kv->val.type == MSGPACK_OBJECT_MAP
             && tms_status == FORMAT_TIMESTAMP_OBJECT) {
-
             continue;
         }
 
         if (validate_key(kv->key, "timestampSeconds", 16)
             && tms_status == FORMAT_TIMESTAMP_DUO_FIELDS) {
-
             continue;
         }
         if (validate_key(kv->key, "timestampNanos", 14)
             && tms_status == FORMAT_TIMESTAMP_DUO_FIELDS) {
-                
             continue;
         }
 
         if (validate_key(kv->key, "time", 4)
             && (tms_status == FORMAT_TIME || tms_status == INVALID_FORMAT_TIME)) {
-
             continue;
         }
 
@@ -919,8 +914,6 @@ static int stackdriver_format(struct flb_config *config,
     char path[PATH_MAX];
     char time_formatted[255];
     const char *newtag;
-    struct tm tm;
-    struct flb_time tms;
     msgpack_object *obj;
     msgpack_object *labels_ptr;
     msgpack_unpacked result;
@@ -942,6 +935,8 @@ static int stackdriver_format(struct flb_config *config,
     int operation_extra_size = 0;
 
     /* Parameters for Timestamp */
+    struct tm tm;
+    struct flb_time tms;
     flb_sds_t format_time;
     timestamp_status tms_status;
 
@@ -1211,10 +1206,6 @@ static int stackdriver_format(struct flb_config *config,
             entry_size += 1;
         }
 
-        /* Extract timestamp */
-        format_time = flb_sds_create("");
-        tms_status = extract_timestamp(obj, &tms, format_time);
-
         msgpack_pack_map(&mp_pck, entry_size);
 
         /* Add severity into the log entry */
@@ -1280,6 +1271,9 @@ static int stackdriver_format(struct flb_config *config,
          * 
          * If format is time, directly use the flb_sds_t format_time.
          */
+        format_time = flb_sds_create("");
+        tms_status = extract_timestamp(obj, &tms, format_time);
+        
         if (tms_status == FORMAT_TIME) {
             msgpack_pack_str(&mp_pck, flb_sds_len(format_time));
             msgpack_pack_str_body(&mp_pck, format_time, flb_sds_len(format_time));
