@@ -31,6 +31,7 @@
 #include "stackdriver.h"
 #include "stackdriver_conf.h"
 #include "stackdriver_operation.h"
+#include "stackdriver_source_location.h"
 #include "stackdriver_helper.h"
 #include <mbedtls/base64.h>
 #include <mbedtls/sha256.h>
@@ -763,7 +764,9 @@ static int get_stream(msgpack_object_map map)
 }
 
                                                                                         
-static int pack_json_payload(int operation_extracted, int operation_extra_size, 
+static int pack_json_payload(int operation_extracted, int operation_extra_size,
+                             int source_location_extracted, 
+                             int source_location_extra_size,
                              msgpack_packer *mp_pck, msgpack_object *obj,
                              struct flb_stackdriver *ctx)
 {
@@ -794,6 +797,9 @@ static int pack_json_payload(int operation_extracted, int operation_extra_size,
     };
 
     if (operation_extracted == FLB_TRUE && operation_extra_size == 0) {
+        to_remove += 1;
+    }
+    if(source_location_extracted == FLB_TRUE && source_location_extra_size == 0) {
         to_remove += 1;
     }
 
@@ -835,6 +841,18 @@ static int pack_json_payload(int operation_extracted, int operation_extra_size,
             if (operation_extra_size > 0) {
                 msgpack_pack_object(mp_pck, kv->key);
                 pack_extra_operation_subfields(mp_pck, &kv->val, operation_extra_size);
+            }
+            continue;
+        }
+
+        if (validate_key(kv->key, SOURCELOCATION_FIELD_IN_JSON, 
+                         SOURCE_LOCATION_SIZE)
+            && kv->val.type == MSGPACK_OBJECT_MAP) {
+
+            if (source_location_extra_size > 0) {
+                msgpack_pack_object(mp_pck, kv->key);
+                pack_extra_source_location_subfields(mp_pck, &kv->val, 
+                                                     source_location_extra_size);
             }
             continue;
         }
@@ -906,6 +924,13 @@ static int stackdriver_format(struct flb_config *config,
     int operation_last = FLB_FALSE;
     int operation_extracted = FLB_FALSE;
     int operation_extra_size = 0;
+
+    /* Parameters for sourceLocation */
+    flb_sds_t source_location_file;
+    int64_t source_location_line = 0;
+    flb_sds_t source_location_function;
+    int source_location_extracted = FLB_FALSE;
+    int source_location_extra_size = 0;
 
     /* Count number of records */
     array_size = flb_mp_count(data, bytes);
@@ -1158,6 +1183,21 @@ static int stackdriver_format(struct flb_config *config,
             entry_size += 1;
         }
 
+        /* Extract sourceLocation */
+        source_location_file = flb_sds_create("");
+        source_location_function = flb_sds_create("");
+        source_location_line = 0;
+        source_location_extra_size = 0;
+        source_location_extracted = extract_source_location(&source_location_file, 
+                                                            &source_location_line,
+                                                            &source_location_function, 
+                                                            obj, 
+                                                            &source_location_extra_size);
+        
+        if (source_location_extracted == FLB_TRUE) {
+            entry_size += 1;
+        }
+
         /* Extract labels */
         labels_ptr = parse_labels(ctx, obj);
         if (labels_ptr != NULL) {
@@ -1187,6 +1227,12 @@ static int stackdriver_format(struct flb_config *config,
                                 &operation_first, &operation_last, &mp_pck);
         }
 
+        /* Add sourceLocation field into the log entry */
+        if (source_location_extracted == FLB_TRUE) {
+            add_source_location_field(&source_location_file, source_location_line, 
+                                      &source_location_function, &mp_pck);
+        }
+
         /* labels */
         if (labels_ptr != NULL) {
             msgpack_pack_str(&mp_pck, 6);
@@ -1197,11 +1243,15 @@ static int stackdriver_format(struct flb_config *config,
         /* Clean up */
         flb_sds_destroy(operation_id);
         flb_sds_destroy(operation_producer);
+        flb_sds_destroy(source_location_file);
+        flb_sds_destroy(source_location_function);
 
         /* jsonPayload */
         msgpack_pack_str(&mp_pck, 11);
         msgpack_pack_str_body(&mp_pck, "jsonPayload", 11);
         pack_json_payload(operation_extracted, operation_extra_size, 
+                          source_location_extracted,
+                          source_location_extra_size,
                           &mp_pck, obj, ctx);
 
         /* avoid modifying the original tag */
