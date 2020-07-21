@@ -849,7 +849,6 @@ static int pack_json_payload(int operation_extracted, int operation_extra_size,
         }
 
         if (validate_key(kv->key, "timestamp", 9)
-            && kv->val.type == MSGPACK_OBJECT_MAP
             && tms_status == FORMAT_TIMESTAMP_OBJECT) {
             continue;
         }
