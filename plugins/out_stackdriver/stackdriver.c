@@ -1155,6 +1155,8 @@ static int stackdriver_format(struct flb_config *config,
     while (msgpack_unpack_next(&result, data, bytes, &off) == MSGPACK_UNPACK_SUCCESS) {
         /* Get timestamp */
         flb_time_pop_from_msgpack(&tms, &result, &obj);
+        format_time = flb_sds_create("");
+        tms_status = extract_timestamp(obj, &tms, format_time);
 
         /*
          * Pack entry
@@ -1226,10 +1228,6 @@ static int stackdriver_format(struct flb_config *config,
             msgpack_pack_str_body(&mp_pck, "labels", 6);
             msgpack_pack_object(&mp_pck, *labels_ptr);
         }
-
-        /* Extract timestamp */
-        format_time = flb_sds_create("");
-        tms_status = extract_timestamp(obj, &tms, format_time);
         
         /* Clean up */
         flb_sds_destroy(operation_id);

@@ -36,3 +36,27 @@
             "\"nanos\": true"      \
         "}"     \
 	"}]"
+
+
+/* 2020-07-21T16:40:42.000012345Z */
+#define TIMESTAMP_FORMAT_DUO_FIELDS_COMMON_CASE	"["		\
+	"1595349600,"			\
+	"{"				\
+        "\"timestampSeconds\": \"1595349642\","	     \
+        "\"timestampNanos\": \"12345\""	     \
+	"}]"
+
+/* Default: 2020-07-21T16:40:00Z */
+#define TIMESTAMP_FORMAT_DUO_FIELDS_MISSING_NANOS	"["		\
+	"1595349600,"			\
+	"{"				\
+        "\"timestampSeconds\": \"1595349642\""	     \
+	"}]"
+
+/* Default: 2020-07-21T16:40:00Z */
+#define TIMESTAMP_FORMAT_DUO_FIELDS_INCORRECT_TYPE	"["		\
+	"1595349600,"			\
+	"{"				\
+        "\"timestampSeconds\": \"string\","	     \
+        "\"timestampNanos\": true"	     \
+	"}]"

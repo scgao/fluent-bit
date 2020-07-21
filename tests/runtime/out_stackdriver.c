@@ -881,6 +881,61 @@ static void cb_check_timestamp_format_object_incorrect_subfields(void *ctx, int 
     flb_sds_destroy(res_data);
 }
 
+static void cb_check_timestamp_format_duo_fields_common_case(void *ctx, int ffd,
+                                                             int res_ret, void *res_data, size_t res_size,
+                                                             void *data)
+{
+    int ret;
+
+    ret = mp_kv_cmp(res_data, res_size, "$entries[0]['timestamp']", "2020-07-21T16:40:42.000012345Z");
+    TEST_CHECK(ret == FLB_TRUE);
+
+    /* check `timestampSeconds` has been removed from jsonPayload */
+    ret = mp_kv_exists(res_data, res_size, "$entries[0]['jsonPayload']['timestampSeconds']");
+    TEST_CHECK(ret == FLB_FALSE);
+
+    /* check `timestampNanos` has been removed from jsonPayload */
+    ret = mp_kv_exists(res_data, res_size, "$entries[0]['jsonPayload']['timestampNanos']");
+    TEST_CHECK(ret == FLB_FALSE);
+
+    flb_sds_destroy(res_data);
+}
+
+static void cb_check_timestamp_format_duo_fields_missing_nanos(void *ctx, int ffd,
+                                                               int res_ret, void *res_data, size_t res_size,
+                                                               void *data)
+{
+    int ret;
+
+    ret = mp_kv_cmp(res_data, res_size, "$entries[0]['timestamp']", "2020-07-21T16:40:00.000000000Z");
+    TEST_CHECK(ret == FLB_TRUE);
+
+    ret = mp_kv_cmp(res_data, res_size, "$entries[0]['jsonPayload']['timestampSeconds']", "1595349642");
+    TEST_CHECK(ret == FLB_TRUE);
+
+    flb_sds_destroy(res_data);
+}
+
+static void cb_check_timestamp_format_duo_fields_incorrect_type(void *ctx, int ffd,
+                                                                int res_ret, void *res_data, size_t res_size,
+                                                                void *data)
+{
+    int ret;
+
+    ret = mp_kv_cmp(res_data, res_size, "$entries[0]['timestamp']", "2020-07-21T16:40:00.000000000Z");
+    TEST_CHECK(ret == FLB_TRUE);
+
+    /* check `timestampSeconds` has been removed from jsonPayload */
+    ret = mp_kv_exists(res_data, res_size, "$entries[0]['jsonPayload']['timestampSeconds']");
+    TEST_CHECK(ret == FLB_FALSE);
+
+    /* check `timestampNanos` has been removed from jsonPayload */
+    ret = mp_kv_exists(res_data, res_size, "$entries[0]['jsonPayload']['timestampNanos']");
+    TEST_CHECK(ret == FLB_FALSE);
+
+    flb_sds_destroy(res_data);
+}
+
 void flb_test_resource_global()
 {
     int ret;
@@ -1705,6 +1760,126 @@ void flb_test_timestamp_format_object_incorrect_subfields()
     flb_destroy(ctx);
 }
 
+void flb_test_timestamp_format_duo_fields_common_case()
+{
+    int ret;
+    int size = sizeof(TIMESTAMP_FORMAT_DUO_FIELDS_COMMON_CASE) - 1;
+    flb_ctx_t *ctx;
+    int in_ffd;
+    int out_ffd;
+
+    /* Create context, flush every second (some checks omitted here) */
+    ctx = flb_create();
+    flb_service_set(ctx, "flush", "1", "grace", "1", NULL);
+
+    /* Lib input mode */
+    in_ffd = flb_input(ctx, (char *) "lib", NULL);
+    flb_input_set(ctx, in_ffd, "tag", "test", NULL);
+
+    /* Stackdriver output */
+    out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
+    flb_output_set(ctx, out_ffd,
+                   "match", "test",
+                   "resource", "gce_instance",
+                   NULL);
+
+    /* Enable test mode */
+    ret = flb_output_set_test(ctx, out_ffd, "formatter",
+                              cb_check_timestamp_format_duo_fields_common_case,
+                              NULL, NULL);
+
+    /* Start */
+    ret = flb_start(ctx);
+    TEST_CHECK(ret == 0);
+
+    /* Ingest data sample */
+    flb_lib_push(ctx, in_ffd, (char *) TIMESTAMP_FORMAT_DUO_FIELDS_COMMON_CASE, size);
+
+    sleep(2);
+    flb_stop(ctx);
+    flb_destroy(ctx);
+}
+
+void flb_test_timestamp_format_duo_fields_missing_nanos()
+{
+    int ret;
+    int size = sizeof(TIMESTAMP_FORMAT_DUO_FIELDS_MISSING_NANOS) - 1;
+    flb_ctx_t *ctx;
+    int in_ffd;
+    int out_ffd;
+
+    /* Create context, flush every second (some checks omitted here) */
+    ctx = flb_create();
+    flb_service_set(ctx, "flush", "1", "grace", "1", NULL);
+
+    /* Lib input mode */
+    in_ffd = flb_input(ctx, (char *) "lib", NULL);
+    flb_input_set(ctx, in_ffd, "tag", "test", NULL);
+
+    /* Stackdriver output */
+    out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
+    flb_output_set(ctx, out_ffd,
+                   "match", "test",
+                   "resource", "gce_instance",
+                   NULL);
+
+    /* Enable test mode */
+    ret = flb_output_set_test(ctx, out_ffd, "formatter",
+                              cb_check_timestamp_format_duo_fields_missing_nanos,
+                              NULL, NULL);
+
+    /* Start */
+    ret = flb_start(ctx);
+    TEST_CHECK(ret == 0);
+
+    /* Ingest data sample */
+    flb_lib_push(ctx, in_ffd, (char *) TIMESTAMP_FORMAT_DUO_FIELDS_MISSING_NANOS, size);
+
+    sleep(2);
+    flb_stop(ctx);
+    flb_destroy(ctx);
+}
+
+void flb_test_timestamp_format_duo_fields_incorrect_type()
+{
+    int ret;
+    int size = sizeof(TIMESTAMP_FORMAT_DUO_FIELDS_INCORRECT_TYPE) - 1;
+    flb_ctx_t *ctx;
+    int in_ffd;
+    int out_ffd;
+
+    /* Create context, flush every second (some checks omitted here) */
+    ctx = flb_create();
+    flb_service_set(ctx, "flush", "1", "grace", "1", NULL);
+
+    /* Lib input mode */
+    in_ffd = flb_input(ctx, (char *) "lib", NULL);
+    flb_input_set(ctx, in_ffd, "tag", "test", NULL);
+
+    /* Stackdriver output */
+    out_ffd = flb_output(ctx, (char *) "stackdriver", NULL);
+    flb_output_set(ctx, out_ffd,
+                   "match", "test",
+                   "resource", "gce_instance",
+                   NULL);
+
+    /* Enable test mode */
+    ret = flb_output_set_test(ctx, out_ffd, "formatter",
+                              cb_check_timestamp_format_duo_fields_incorrect_type,
+                              NULL, NULL);
+
+    /* Start */
+    ret = flb_start(ctx);
+    TEST_CHECK(ret == 0);
+
+    /* Ingest data sample */
+    flb_lib_push(ctx, in_ffd, (char *) TIMESTAMP_FORMAT_DUO_FIELDS_INCORRECT_TYPE, size);
+
+    sleep(2);
+    flb_stop(ctx);
+    flb_destroy(ctx);
+}
+
 /* Test list */
 TEST_LIST = {
     {"severity_multi_entries", flb_test_multi_entries_severity },
@@ -1733,5 +1908,9 @@ TEST_LIST = {
     {"Timestamp_format_object_not_a_map", flb_test_timestamp_format_object_not_a_map},
     {"Timestamp_format_object_missing_subfield", flb_test_timestamp_format_object_missing_subfield},
     {"Timestamp_format_object_incorrect_type_subfields", flb_test_timestamp_format_object_incorrect_subfields},
+
+    {"Timestamp_format_duo_fields_common_case", flb_test_timestamp_format_duo_fields_common_case},
+    {"Timestamp_format_duo_fields_missing_nanos", flb_test_timestamp_format_duo_fields_missing_nanos},
+    {"Timestamp_format_duo_fields_incorrect_type", flb_test_timestamp_format_duo_fields_incorrect_type},
     {NULL, NULL}
 };
