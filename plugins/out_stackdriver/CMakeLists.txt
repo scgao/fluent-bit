@@ -6,6 +6,7 @@ set(src
   stackdriver_timestamp.c
   stackdriver_helper.c
   stackdriver_source_location.c
+  stackdriver_http_request.c
   )
 
 FLB_PLUGIN(out_stackdriver "${src}" "")
