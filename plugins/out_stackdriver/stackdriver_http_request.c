@@ -255,62 +255,62 @@ int extract_http_request(struct http_request_field *http_request,
                 }
                 validate_latency(tmp_p->val.via.str, http_request);
             }
-            else if (validate_key(tmp_p, HTTP_REQUEST_PROTOCOL, 
-                                  HTTP_REQUEST_PROTOCOL_SIZE) {
+            else if (validate_key(tmp_p->key, HTTP_REQUEST_PROTOCOL, 
+                                  HTTP_REQUEST_PROTOCOL_SIZE)) {
                 try_assign_subfield_str(tmp_p->val, &http_request->protocol);
             }
-            else if (validate_key(tmp_p, HTTP_REQUEST_REFERER, 
-                                  HTTP_REQUEST_REFERER_SIZE) {
+            else if (validate_key(tmp_p->key, HTTP_REQUEST_REFERER, 
+                                  HTTP_REQUEST_REFERER_SIZE)) {
                 try_assign_subfield_str(tmp_p->val, &http_request->referer);
             }
-            else if (validate_key(tmp_p, HTTP_REQUEST_REMOTE_IP, 
-                                  HTTP_REQUEST_REMOTE_IP_SIZE) {
+            else if (validate_key(tmp_p->key, HTTP_REQUEST_REMOTE_IP, 
+                                  HTTP_REQUEST_REMOTE_IP_SIZE)) {
                 try_assign_subfield_str(tmp_p->val, &http_request->remoteIp);
             }
-            else if (validate_key(tmp_p, HTTP_REQUEST_REQUEST_METHOD, 
-                                  HTTP_REQUEST_REQUEST_METHOD_SIZE) {
+            else if (validate_key(tmp_p->key, HTTP_REQUEST_REQUEST_METHOD, 
+                                  HTTP_REQUEST_REQUEST_METHOD_SIZE)) {
                 try_assign_subfield_str(tmp_p->val, &http_request->requestMethod);
             }
-            else if (validate_key(tmp_p, HTTP_REQUEST_REQUEST_URL, 
-                                  HTTP_REQUEST_REQUEST_URL_SIZE) {
+            else if (validate_key(tmp_p->key, HTTP_REQUEST_REQUEST_URL, 
+                                  HTTP_REQUEST_REQUEST_URL_SIZE)) {
                 try_assign_subfield_str(tmp_p->val, &http_request->requestUrl);
             }
-            else if (validate_key(tmp_p, HTTP_REQUEST_SERVER_IP, 
-                                  HTTP_REQUEST_SERVER_IP_SIZE) {
+            else if (validate_key(tmp_p->key, HTTP_REQUEST_SERVER_IP, 
+                                  HTTP_REQUEST_SERVER_IP_SIZE)) {
                 try_assign_subfield_str(tmp_p->val, &http_request->serverIp);
             }
-            else if (validate_key(tmp_p, HTTP_REQUEST_USER_AGENT, 
-                                  HTTP_REQUEST_USER_AGENT_SIZE) {
+            else if (validate_key(tmp_p->key, HTTP_REQUEST_USER_AGENT, 
+                                  HTTP_REQUEST_USER_AGENT_SIZE)) {
                 try_assign_subfield_str(tmp_p->val, &http_request->userAgent);
             }
 
-            else if (validate_key(tmp_p, HTTP_REQUEST_CACHE_FILL_BYTES, 
-                                  HTTP_REQUEST_CACHE_FILL_BYTES_SIZE) {
+            else if (validate_key(tmp_p->key, HTTP_REQUEST_CACHE_FILL_BYTES, 
+                                  HTTP_REQUEST_CACHE_FILL_BYTES_SIZE)) {
                 try_assign_subfield_int(tmp_p->val, &http_request->cacheFillBytes);
             }
-            else if (validate_key(tmp_p, HTTP_REQUEST_REQUESTSIZE, 
-                                  HTTP_REQUEST_REQUESTSIZE_SIZE) {
+            else if (validate_key(tmp_p->key, HTTP_REQUEST_REQUESTSIZE, 
+                                  HTTP_REQUEST_REQUESTSIZE_SIZE)) {
                 try_assign_subfield_int(tmp_p->val, &http_request->requestSize);
             }
-            else if (validate_key(tmp_p, HTTP_REQUEST_RESPONSESIZE, 
-                                  HTTP_REQUEST_RESPONSESIZE_SIZE) {
+            else if (validate_key(tmp_p->key, HTTP_REQUEST_RESPONSESIZE, 
+                                  HTTP_REQUEST_RESPONSESIZE_SIZE)) {
                 try_assign_subfield_int(tmp_p->val, &http_request->responseSize);
             }
-            else if (validate_key(tmp_p, HTTP_REQUEST_STATUS, 
-                                  HTTP_REQUEST_STATUS_SIZE) {
+            else if (validate_key(tmp_p->key, HTTP_REQUEST_STATUS, 
+                                  HTTP_REQUEST_STATUS_SIZE)) {
                 try_assign_subfield_int(tmp_p->val, &http_request->status);
             }
 
-            else if (validate_key(tmp_p, HTTP_REQUEST_CACHE_HIT, 
-                                  HTTP_REQUEST_CACHE_HIT_SIZE) {
+            else if (validate_key(tmp_p->key, HTTP_REQUEST_CACHE_HIT, 
+                                  HTTP_REQUEST_CACHE_HIT_SIZE)) {
                 try_assign_subfield_bool(tmp_p->val, &http_request->cacheHit);
             }
-            else if (validate_key(tmp_p, HTTP_REQUEST_CACHE_LOOKUP, 
-                                  HTTP_REQUEST_CACHE_LOOKUP_SIZE) {
+            else if (validate_key(tmp_p->key, HTTP_REQUEST_CACHE_LOOKUP, 
+                                  HTTP_REQUEST_CACHE_LOOKUP_SIZE)) {
                 try_assign_subfield_bool(tmp_p->val, &http_request->cacheLookup);
             }
-            else if (validate_key(tmp_p, HTTP_REQUEST_CACHE_VALIDATE_WITH_ORIGIN_SERVER, 
-                                  HTTP_REQUEST_CACHE_VALIDATE_WITH_ORIGIN_SERVER_SIZE) {
+            else if (validate_key(tmp_p->key, HTTP_REQUEST_CACHE_VALIDATE_WITH_ORIGIN_SERVER, 
+                                  HTTP_REQUEST_CACHE_VALIDATE_WITH_ORIGIN_SERVER_SIZE)) {
                 try_assign_subfield_bool(tmp_p->val, 
                                          &http_request->cacheValidatedWithOriginServer);
             }

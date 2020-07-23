@@ -31,7 +31,7 @@
 #include "stackdriver.h"
 #include "stackdriver_conf.h"
 #include "stackdriver_operation.h"
-#include "stackdriver_source_location.h"
+#include "stackdriver_http_request.h"
 #include "stackdriver_helper.h"
 #include <mbedtls/base64.h>
 #include <mbedtls/sha256.h>
