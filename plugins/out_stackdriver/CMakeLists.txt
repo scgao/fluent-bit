@@ -3,6 +3,7 @@ set(src
   stackdriver_conf.c
   stackdriver.c
   stackdriver_operation.c
+  stackdriver_http_request.c
   stackdriver_helper.c
   )
 

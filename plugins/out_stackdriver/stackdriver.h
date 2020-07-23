@@ -49,9 +49,10 @@
 #define OPERATION_FIELD_IN_JSON "logging.googleapis.com/operation"
 #define LOCAL_RESOURCE_ID_KEY "logging.googleapis.com/local_resource_id"
 #define DEFAULT_LABELS_KEY "logging.googleapis.com/labels"
-
+#define HTTPREQUEST_FIELD_IN_JSON "logging.googleapis.com/http_request"
 #define LEN_LOCAL_RESOURCE_ID_KEY 40
 #define OPERATION_KEY_SIZE 32
+#define HTTP_REQUEST_KEY_SIZE 35
 
 #define K8S_CONTAINER "k8s_container"
 #define K8S_NODE      "k8s_node"
