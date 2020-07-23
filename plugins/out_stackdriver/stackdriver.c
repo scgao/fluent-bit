@@ -31,6 +31,7 @@
 #include "stackdriver.h"
 #include "stackdriver_conf.h"
 #include "stackdriver_operation.h"
+#include "stackdriver_source_location.h"
 #include "stackdriver_helper.h"
 #include <mbedtls/base64.h>
 #include <mbedtls/sha256.h>
@@ -763,7 +764,9 @@ static int get_stream(msgpack_object_map map)
 }
 
                                                                                         
-static int pack_json_payload(int operation_extracted, int operation_extra_size, 
+static int pack_json_payload(int operation_extracted, int operation_extra_size,
+                             int http_request_extracted, 
+                             int http_request_extra_size,
                              msgpack_packer *mp_pck, msgpack_object *obj,
                              struct flb_stackdriver *ctx)
 {
@@ -794,6 +797,9 @@ static int pack_json_payload(int operation_extracted, int operation_extra_size,
     };
 
     if (operation_extracted == FLB_TRUE && operation_extra_size == 0) {
+        to_remove += 1;
+    }
+    if(http_request_extracted == FLB_TRUE && http_request_extra_size == 0) {
         to_remove += 1;
     }
 
@@ -835,6 +841,18 @@ static int pack_json_payload(int operation_extracted, int operation_extra_size,
             if (operation_extra_size > 0) {
                 msgpack_pack_object(mp_pck, kv->key);
                 pack_extra_operation_subfields(mp_pck, &kv->val, operation_extra_size);
+            }
+            continue;
+        }
+
+        if (validate_key(kv->key, HTTPREQUEST_FIELD_IN_JSON, 
+                         HTTP_REQUEST_KEY_SIZE) 
+            && kv->val.type == MSGPACK_OBJECT_MAP) {
+
+            if(http_request_extra_size > 0) {
+                msgpack_pack_object(mp_pck, kv->key);
+                pack_extra_http_request_subfields(mp_pck, &kv->val, 
+                                                  http_request_extra_size);
             }
             continue;
         }
@@ -906,6 +924,11 @@ static int stackdriver_format(struct flb_config *config,
     int operation_last = FLB_FALSE;
     int operation_extracted = FLB_FALSE;
     int operation_extra_size = 0;
+
+    /* Parameters for httpRequest */
+    struct http_request_field http_request;
+    int http_request_extracted = FLB_FALSE;
+    int http_request_extra_size = 0;
 
     /* Count number of records */
     array_size = flb_mp_count(data, bytes);
@@ -1159,6 +1182,15 @@ static int stackdriver_format(struct flb_config *config,
             entry_size += 1;
         }
 
+        /* Extract httpRequest */
+        init_http_request(&http_request);
+        http_request_extra_size = 0;
+        http_request_extracted = extract_http_request(&http_request, obj, 
+                                                      &http_request_extra_size);
+        if (http_request_extracted == FLB_TRUE) {
+            entry_size += 1;
+        }
+
         /* Extract labels */
         labels_ptr = parse_labels(ctx, obj);
         if (labels_ptr != NULL) {
@@ -1188,6 +1220,11 @@ static int stackdriver_format(struct flb_config *config,
                                 &operation_first, &operation_last, &mp_pck);
         }
 
+        /* Add httpRequest field into the log entry */
+        if (http_request_extracted == FLB_TRUE) {
+            add_http_request_field(&http_request, &mp_pck);
+        }
+
         /* labels */
         if (labels_ptr != NULL) {
             msgpack_pack_str(&mp_pck, 6);
@@ -1198,11 +1235,14 @@ static int stackdriver_format(struct flb_config *config,
         /* Clean up */
         flb_sds_destroy(operation_id);
         flb_sds_destroy(operation_producer);
+        destroy_http_request(&http_request);
 
         /* jsonPayload */
         msgpack_pack_str(&mp_pck, 11);
         msgpack_pack_str_body(&mp_pck, "jsonPayload", 11);
-        pack_json_payload(operation_extracted, operation_extra_size, 
+        pack_json_payload(operation_extracted, operation_extra_size,
+                          http_request_extracted, 
+                          http_request_extra_size,
                           &mp_pck, obj, ctx);
 
         /* avoid modifying the original tag */
