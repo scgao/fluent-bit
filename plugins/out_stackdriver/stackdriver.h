@@ -132,5 +132,4 @@ struct local_resource_id_list {
     struct mk_list _head;
 };
 
-
 #endif
